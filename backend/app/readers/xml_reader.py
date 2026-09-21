@@ -69,6 +69,24 @@ class _SanitizedXMLSource:
     def _fix_encoding_decl(self, data: bytes) -> bytes:
         return _ENCODING_DECL_RE.sub(b'encoding="UTF-8"', data, count=1)
 
+    @staticmethod
+    def _safe_cut(combined: str) -> int:
+        """A cut point that never splits a possible character reference.
+
+        A fixed `len(combined) - _TAIL_KEEP` cut isn't enough on its own:
+        if the '&' of a reference lands exactly as the last character
+        before the cut, it has no ';' yet to its right, so the regex
+        doesn't match it there — it goes out as a literal '&'. The rest
+        of the reference then arrives in the *next* chunk without its
+        '&', so the regex never sees the two halves together and the
+        whole thing survives unstripped in the reassembled output.
+        """
+        cut = max(0, len(combined) - _TAIL_KEEP)
+        amp = combined.rfind("&", 0, cut)
+        if amp != -1 and ";" not in combined[amp:cut]:
+            return amp
+        return cut
+
     def _fill(self, min_bytes: int) -> None:
         while len(self._byte_buf) < min_bytes and not self._eof:
             chunk = self._f.read(self._chunk_chars)
@@ -83,7 +101,7 @@ class _SanitizedXMLSource:
                     self._text_tail = ""
                 break
             combined = self._text_tail + chunk
-            safe_len = max(0, len(combined) - _TAIL_KEEP)
+            safe_len = self._safe_cut(combined)
             to_clean, self._text_tail = combined[:safe_len], combined[safe_len:]
             cleaned = _strip_invalid_charrefs(to_clean).encode("utf-8")
             if self._first_chunk:
