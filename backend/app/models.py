@@ -107,7 +107,10 @@ class ValidationResult(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("runs.id"), index=True)
-    rule_id: Mapped[str] = mapped_column(String(36), ForeignKey("validation_rules.id"))
+    # A rule can be removed after it's already produced results on past
+    # runs (§7.5's resolution loop doesn't require keeping it around) --
+    # cascade so that doesn't turn into a foreign-key error.
+    rule_id: Mapped[str] = mapped_column(String(36), ForeignKey("validation_rules.id", ondelete="CASCADE"))
     scope: Mapped[str] = mapped_column(String(16))
     column: Mapped[str | None] = mapped_column(String(255), nullable=True)
     rule: Mapped[str] = mapped_column(String(32))
@@ -124,7 +127,9 @@ class ValidationIssue(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     run_id: Mapped[str] = mapped_column(String(36), ForeignKey("runs.id"), index=True)
-    rule_id: Mapped[str] = mapped_column(String(36), ForeignKey("validation_rules.id"), index=True)
+    rule_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("validation_rules.id", ondelete="CASCADE"), index=True
+    )
     row_ordinal: Mapped[int] = mapped_column(Integer)
     column_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     offending_value: Mapped[str | None] = mapped_column(Text, nullable=True)
