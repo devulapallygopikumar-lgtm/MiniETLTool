@@ -11,7 +11,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from . import audit, models
+from . import audit, models, target_tables
 from .config import settings
 from .database import SessionLocal
 from .readers.base import discover_entities, read_rows
@@ -55,7 +55,7 @@ def discover_and_create_datasets(
             source_format=format,
             entity_spec_json=ent.spec,
             schema_json=ent.columns,
-            target_table=f"dataset_{dataset.id}",
+            target_table=target_tables.physical_table_name(dataset.id),
         )
         db.add(mapping)
 
@@ -160,6 +160,8 @@ def _execute_run(db: Session, run_id: str) -> None:
 
     rejected = outcome.rejected_ordinals
     written = 0
+    loaded_ordinals: list[int] = []
+    loaded_rows_batch: list[dict[str, str | None]] = []
     for i, row in enumerate(rows, start=1):
         if i in rejected:
             db.add(
@@ -169,7 +171,15 @@ def _execute_run(db: Session, run_id: str) -> None:
             )
         else:
             db.add(models.LoadedRow(dataset_id=dataset.id, run_id=run.id, row_ordinal=i, data_json=row))
+            loaded_ordinals.append(i)
+            loaded_rows_batch.append(row)
             written += 1
+    db.commit()
+
+    # The queryable target: a real, typed table generated from the dataset's
+    # pinned schema, not just the loaded_rows JSON dump (ARCHITECTURE.md §4.2).
+    col_map = target_tables.ensure_table(db.connection(), dataset.id, dataset.columns_json)
+    target_tables.insert_rows(db.connection(), dataset.id, run.id, loaded_rows_batch, loaded_ordinals, col_map)
     db.commit()
 
     run.rows_written = written

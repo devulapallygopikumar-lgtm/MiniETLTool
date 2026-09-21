@@ -1,0 +1,123 @@
+"""Materializes a real, typed Postgres table per dataset from the rows a run
+loads — instead of leaving `loaded_rows` as the only queryable copy (a
+generic `(dataset_id, run_id, row_ordinal, data_json)` store).
+
+This is the RDBMS target from ARCHITECTURE.md §4.2 ("For RDBMS targets,
+`begin` creates a staging table... `commit` performs the atomic swap or
+merge") scoped down for the slice: the table is created once per dataset,
+named from `mapping.target_table`, with columns typed from the dataset's
+already-pinned inferred schema (§4.4), and each successful run appends its
+loaded rows into it. `loaded_rows` is untouched and keeps working as the
+audit/fallback copy every run already wrote.
+
+Values that don't parse to the target column type land as NULL — the same
+thing that happens today if `type_parse` isn't mandatory on that column.
+Enforce `type_parse` as mandatory on a column to guarantee its physical
+column never loses data this way.
+"""
+
+import re
+from datetime import date, datetime
+
+from sqlalchemy import text as sa_text
+from sqlalchemy.engine import Connection
+
+from .readers.inference import _DATE_FORMATS
+
+_PG_TYPES = {
+    "integer": "BIGINT",
+    "number": "NUMERIC",
+    "date": "DATE",
+    "string": "TEXT",
+}
+
+_RESERVED_COLUMNS = {"id", "run_id", "row_ordinal", "loaded_at"}
+
+
+def physical_table_name(dataset_id: str) -> str:
+    return "dataset_" + dataset_id.replace("-", "_")
+
+
+def _slug_column(name: str, used: set[str]) -> str:
+    slug = re.sub(r"[^a-zA-Z0-9_]", "_", name).strip("_").lower() or "col"
+    if slug[0].isdigit():
+        slug = f"c_{slug}"
+    slug = slug[:57]
+    if slug in _RESERVED_COLUMNS or slug in used:
+        base, i = slug, 2
+        while slug in _RESERVED_COLUMNS or slug in used:
+            slug = f"{base}_{i}"
+            i += 1
+    used.add(slug)
+    return slug
+
+
+def build_column_map(columns: list[dict]) -> list[tuple[str, str, str]]:
+    """Returns (source_column_name, physical_column_name, inferred_type) per column."""
+    used: set[str] = set()
+    return [(c["name"], _slug_column(c["name"], used), c["type"]) for c in columns]
+
+
+def ensure_table(conn: Connection, dataset_id: str, columns: list[dict]) -> list[tuple[str, str, str]]:
+    table_name = physical_table_name(dataset_id)
+    col_map = build_column_map(columns)
+    cols_sql = ",\n  ".join(f'"{phys}" {_PG_TYPES.get(type_key, "TEXT")}' for _, phys, type_key in col_map)
+    conn.execute(
+        sa_text(
+            f'CREATE TABLE IF NOT EXISTS "{table_name}" (\n'
+            f"  id BIGSERIAL PRIMARY KEY,\n"
+            f"  run_id VARCHAR(36) NOT NULL,\n"
+            f"  row_ordinal INTEGER NOT NULL,\n"
+            f"  {cols_sql},\n"
+            f"  loaded_at TIMESTAMPTZ NOT NULL DEFAULT now()\n"
+            f")"
+        )
+    )
+    return col_map
+
+
+def _cast_value(value: str | None, type_key: str) -> object:
+    if value is None:
+        return None
+    try:
+        if type_key == "integer":
+            return int(value)
+        if type_key == "number":
+            return float(value)
+        if type_key == "date":
+            for fmt in _DATE_FORMATS:
+                try:
+                    return datetime.strptime(value, fmt).date()
+                except ValueError:
+                    continue
+            return None
+        return value
+    except ValueError:
+        return None
+
+
+def insert_rows(
+    conn: Connection,
+    dataset_id: str,
+    run_id: str,
+    rows: list[dict[str, str | None]],
+    row_ordinals: list[int],
+    col_map: list[tuple[str, str, str]],
+) -> None:
+    if not rows:
+        return
+    table_name = physical_table_name(dataset_id)
+    phys_cols = [phys for _, phys, _ in col_map]
+    col_list = ", ".join(f'"{phys}"' for phys in phys_cols)
+    placeholders = ", ".join(f":{phys}" for phys in phys_cols)
+    stmt = sa_text(
+        f'INSERT INTO "{table_name}" (run_id, row_ordinal, {col_list}) '
+        f"VALUES (:run_id, :row_ordinal, {placeholders})"
+    )
+    params = []
+    for ordinal, row in zip(row_ordinals, rows):
+        p: dict[str, object] = {"run_id": run_id, "row_ordinal": ordinal}
+        for source, phys, type_key in col_map:
+            p[phys] = _cast_value(row.get(source), type_key)
+        params.append(p)
+    conn.execute(stmt, params)
