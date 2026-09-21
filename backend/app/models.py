@@ -28,7 +28,7 @@ class Dataset(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), default=settings.default_tenant_id, index=True)
     name: Mapped[str] = mapped_column(String(255))
     source_filename: Mapped[str] = mapped_column(String(512))
-    format: Mapped[str] = mapped_column(String(16))  # csv | excel | xml
+    format: Mapped[str] = mapped_column(String(32))  # csv | excel | xml | xml-tally | xml-tally-masters
     entity_name: Mapped[str] = mapped_column(String(255))
     state: Mapped[str] = mapped_column(String(32), default="discovered")
     gate_state: Mapped[str] = mapped_column(String(16), default="pending")
@@ -52,7 +52,7 @@ class Mapping(Base):
     # migration (ARCHITECTURE.md §20.6 #7) — the slice only ever writes 'sync'.
     kind: Mapped[str] = mapped_column(String(16), default="sync")
     source_path: Mapped[str] = mapped_column(String(1024))
-    source_format: Mapped[str] = mapped_column(String(16))
+    source_format: Mapped[str] = mapped_column(String(32))
     entity_spec_json: Mapped[dict] = mapped_column(JsonType, default=dict)
     schema_json: Mapped[list] = mapped_column(JsonType, default=list)
     target_table: Mapped[str] = mapped_column(String(255))

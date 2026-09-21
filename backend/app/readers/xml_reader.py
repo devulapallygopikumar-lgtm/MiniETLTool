@@ -19,7 +19,7 @@ from ..config import settings
 from .base import DiscoveredEntity
 from .inference import infer_schema
 
-_CHARREF_RE = re.compile(r"&#(x[0-9A-Fa-f]+|[0-9]+);")
+_CHARREF_RE = re.compile(r"&#([xX][0-9A-Fa-f]+|[0-9]+);")
 _ENCODING_DECL_RE = re.compile(rb'encoding\s*=\s*"[^"]*"', re.IGNORECASE)
 _TAIL_KEEP = 16
 

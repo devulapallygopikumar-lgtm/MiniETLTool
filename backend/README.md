@@ -17,8 +17,14 @@ pip install -r requirements.txt
 cp .env.example .env          # point DATABASE_URL at your Postgres instance
 alembic upgrade head
 
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --host localhost --port 8000
 ```
+
+`--host localhost` matters: uvicorn's default host is IPv4-only
+(`127.0.0.1`), but on a machine where `localhost` resolves to IPv6 first
+(common on Windows), a browser hitting `::1:8000` would find nothing
+listening there. Passing the hostname `localhost` (not the literal IP) has
+uvicorn resolve it and bind both `127.0.0.1` and `::1`.
 
 The frontend (`../frontend`) expects the API at `http://localhost:8000` by
 default (`NEXT_PUBLIC_API_BASE`).

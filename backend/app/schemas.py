@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-SourceFormat = Literal["csv", "excel", "xml", "xml-tally"]
+SourceFormat = Literal["csv", "excel", "xml", "xml-tally", "xml-tally-masters"]
 DatasetState = Literal[
     "discovered",
     "validating",
