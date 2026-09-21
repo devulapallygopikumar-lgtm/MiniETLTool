@@ -15,6 +15,7 @@ from . import audit, models, target_tables
 from .config import settings
 from .database import SessionLocal
 from .readers.base import discover_entities, read_rows
+from .readers.xml_tally_reader import looks_like_tally
 from .validation import RuleSpec, run_validation
 
 
@@ -25,6 +26,13 @@ def _now() -> datetime:
 def discover_and_create_datasets(
     db: Session, path: Path, filename: str, format: str
 ) -> list[models.Dataset]:
+    # A generic .xml upload gets the curated Tally reader instead of the
+    # tag-frequency heuristic when it's actually a Tally export — same
+    # source format slot, better output, no user action needed (see the
+    # 'xml-tally' reader's docstring for why).
+    if format == "xml" and looks_like_tally(path):
+        format = "xml-tally"
+
     entities = discover_entities(path, format)
     if not entities:
         raise ValueError(

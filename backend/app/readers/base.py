@@ -29,7 +29,7 @@ def detect_format(filename: str) -> str | None:
 
 
 def discover_entities(path: Path, format: str) -> list[DiscoveredEntity]:
-    from . import csv_reader, excel_reader, xml_reader
+    from . import csv_reader, excel_reader, xml_reader, xml_tally_reader
 
     if format == "csv":
         return csv_reader.discover(path)
@@ -37,11 +37,13 @@ def discover_entities(path: Path, format: str) -> list[DiscoveredEntity]:
         return excel_reader.discover(path)
     if format == "xml":
         return xml_reader.discover(path)
+    if format == "xml-tally":
+        return xml_tally_reader.discover(path)
     raise ValueError(f"Unsupported format: {format}")
 
 
 def read_rows(path: Path, format: str, spec: dict[str, Any]) -> Iterator[dict[str, str | None]]:
-    from . import csv_reader, excel_reader, xml_reader
+    from . import csv_reader, excel_reader, xml_reader, xml_tally_reader
 
     if format == "csv":
         yield from csv_reader.read_rows(path, spec)
@@ -49,5 +51,7 @@ def read_rows(path: Path, format: str, spec: dict[str, Any]) -> Iterator[dict[st
         yield from excel_reader.read_rows(path, spec)
     elif format == "xml":
         yield from xml_reader.read_rows(path, spec)
+    elif format == "xml-tally":
+        yield from xml_tally_reader.read_rows(path, spec)
     else:
         raise ValueError(f"Unsupported format: {format}")

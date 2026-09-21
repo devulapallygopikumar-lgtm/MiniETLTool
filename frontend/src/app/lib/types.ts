@@ -2,7 +2,7 @@
 // Trimmed from the full data model (§12.1) to what the slice's API exposes:
 // no tenant_id, no bundles, no schedules, no mapplets, no parameters.
 
-export type SourceFormat = "csv" | "excel" | "xml";
+export type SourceFormat = "csv" | "excel" | "xml" | "xml-tally";
 
 export type DatasetState =
   | "discovered"
