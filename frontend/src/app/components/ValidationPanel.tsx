@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { GateBadge } from "@/app/components/GateBadge";
+import { Alert, SectionTitle } from "@/app/components/ui";
 import type { GateState, ValidationResult } from "@/app/lib/types";
 
 interface Props {
@@ -26,21 +27,19 @@ export function ValidationPanel({ gateState, results, runId, live }: Props) {
       </div>
 
       {gateState === "closed" && (
-        <p className="rounded-md bg-danger-soft px-3 py-2 text-xs text-danger">
+        <Alert variant="danger">
           {mandatoryBlocking.length} mandatory rule
           {mandatoryBlocking.length === 1 ? "" : "s"} blocking. Nothing has
           been transformed or loaded.
-        </p>
+        </Alert>
       )}
       {gateState === "open" && (
-        <p className="rounded-md bg-success-soft px-3 py-2 text-xs text-success">
-          All mandatory rules pass.
-        </p>
+        <Alert variant="success">All mandatory rules pass.</Alert>
       )}
       {gateState === "pending" && (
-        <p className="rounded-md bg-surface-soft px-3 py-2 text-xs text-foreground-muted">
+        <Alert variant="info">
           No run yet — validation results appear after the first run.
-        </p>
+        </Alert>
       )}
 
       {live && runId && (
@@ -54,9 +53,7 @@ export function ValidationPanel({ gateState, results, runId, live }: Props) {
 
       {results.length > 0 && (
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-            Rules
-          </h3>
+          <SectionTitle>Rules</SectionTitle>
           <ul className="flex flex-col gap-1.5">
             {[...results]
               .sort((a, b) => {
@@ -95,9 +92,7 @@ export function ValidationPanel({ gateState, results, runId, live }: Props) {
 
       {columnHeat.length > 0 && (
         <div>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground-muted">
-            Column heat
-          </h3>
+          <SectionTitle>Column heat</SectionTitle>
           <ul className="flex flex-col gap-1.5">
             {columnHeat.map((r) => (
               <li key={r.rule_id} className="text-xs">

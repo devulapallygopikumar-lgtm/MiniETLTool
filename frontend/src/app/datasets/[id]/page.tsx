@@ -7,6 +7,7 @@ import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { ValidationPanel } from "@/app/components/ValidationPanel";
 import { RuleEditor } from "@/app/components/RuleEditor";
+import { Alert, Breadcrumb, Button, Card, CardHeader } from "@/app/components/ui";
 import type { Dataset, RunValidation } from "@/app/lib/types";
 
 export default function DatasetPage() {
@@ -48,11 +49,7 @@ export default function DatasetPage() {
   }
 
   if (error && !dataset) {
-    return (
-      <div className="rounded-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-        {error}
-      </div>
-    );
+    return <Alert>{error}</Alert>;
   }
 
   if (!dataset) {
@@ -61,8 +58,11 @@ export default function DatasetPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <Breadcrumb
+            items={[{ label: "Datasets", href: "/" }, { label: dataset.name }]}
+          />
           <h1 className="text-xl font-semibold">{dataset.name}</h1>
           <p className="text-sm text-foreground-muted">
             {dataset.source_filename} · {dataset.entity_name} ·{" "}
@@ -72,22 +72,13 @@ export default function DatasetPage() {
         <div className="flex items-center gap-2">
           <StateBadge state={dataset.state} />
           <GateBadge state={dataset.gate_state} />
-          <button
-            type="button"
-            disabled={running}
-            onClick={handleRun}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
-          >
+          <Button disabled={running} onClick={handleRun}>
             {running ? "Starting…" : "Run"}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <Alert>{error}</Alert>}
 
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[320px_1fr]">
         <ValidationPanel
@@ -102,35 +93,37 @@ export default function DatasetPage() {
         <div className="flex flex-col gap-6">
           <RuleEditor datasetId={dataset.id} columns={dataset.columns} />
 
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-3 text-sm font-semibold">Pinned schema</h2>
-            {dataset.columns.length === 0 ? (
-              <p className="text-xs text-foreground-muted">
-                No schema inferred yet.
-              </p>
-            ) : (
-              <table className="w-full text-left text-sm">
-                <thead className="text-xs uppercase tracking-wide text-foreground-muted">
-                  <tr>
-                    <th className="py-1.5 font-medium">Column</th>
-                    <th className="py-1.5 font-medium">Type</th>
-                    <th className="py-1.5 font-medium">Nullable</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {dataset.columns.map((c) => (
-                    <tr key={c.name} className="border-t border-border">
-                      <td className="py-1.5 font-mono text-xs">{c.name}</td>
-                      <td className="py-1.5 text-foreground-muted">{c.type}</td>
-                      <td className="py-1.5 text-foreground-muted">
-                        {c.nullable ? "yes" : "no"}
-                      </td>
+          <Card>
+            <CardHeader title="Pinned schema" />
+            <div className="p-4">
+              {dataset.columns.length === 0 ? (
+                <p className="text-xs text-foreground-muted">
+                  No schema inferred yet.
+                </p>
+              ) : (
+                <table className="w-full text-left text-sm">
+                  <thead className="text-xs uppercase tracking-wide text-foreground-muted">
+                    <tr>
+                      <th className="py-1.5 font-medium">Column</th>
+                      <th className="py-1.5 font-medium">Type</th>
+                      <th className="py-1.5 font-medium">Nullable</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+                  </thead>
+                  <tbody>
+                    {dataset.columns.map((c) => (
+                      <tr key={c.name} className="border-t border-border">
+                        <td className="py-1.5 font-mono text-xs">{c.name}</td>
+                        <td className="py-1.5 text-foreground-muted">{c.type}</td>
+                        <td className="py-1.5 text-foreground-muted">
+                          {c.nullable ? "yes" : "no"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </Card>
         </div>
       </div>
     </div>

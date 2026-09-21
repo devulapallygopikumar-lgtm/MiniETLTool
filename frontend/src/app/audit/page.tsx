@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, listAuditEvents } from "@/app/lib/api";
+import { Alert, Card } from "@/app/components/ui";
 import type { AuditEvent } from "@/app/lib/types";
 
 export default function AuditPage() {
@@ -25,11 +26,7 @@ export default function AuditPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="rounded-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <Alert>{error}</Alert>}
 
       {!error && events === null && (
         <p className="text-sm text-foreground-muted">Loading audit events…</p>
@@ -40,7 +37,7 @@ export default function AuditPage() {
       )}
 
       {events !== null && events.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <Card className="overflow-hidden">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
@@ -86,7 +83,7 @@ export default function AuditPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );

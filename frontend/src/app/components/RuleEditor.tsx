@@ -16,6 +16,15 @@ import type {
   SchemaColumn,
   ValidationRule,
 } from "@/app/lib/types";
+import {
+  Alert,
+  Button,
+  Card,
+  CardHeader,
+  FormField,
+  IconPlus,
+  SegmentedToggle,
+} from "@/app/components/ui";
 
 interface Props {
   datasetId: string;
@@ -28,6 +37,14 @@ const RULE_TYPES: { value: RuleType; label: string; scope: "column" | "row_or_da
   { value: "unique", label: "Unique (dataset)", scope: "row_or_dataset" },
   { value: "expression", label: "Expression", scope: "row_or_dataset" },
 ];
+
+const ENFORCEMENT_OPTIONS: { value: Enforcement; label: string }[] = [
+  { value: "mandatory", label: "Mandatory" },
+  { value: "move_on", label: "Move-on" },
+];
+
+const inputClass =
+  "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
 
 function emptyDraft(): NewRule {
   return {
@@ -83,13 +100,9 @@ export function RuleEditor({ datasetId, columns }: Props) {
     }
   }
 
-  async function toggleEnforcement(rule: ValidationRule) {
-    const enforcement: Enforcement =
-      rule.enforcement === "mandatory" ? "move_on" : "mandatory";
+  async function changeEnforcement(rule: ValidationRule, enforcement: Enforcement) {
     setRules((rs) =>
-      rs
-        ? rs.map((r) => (r.id === rule.id ? { ...r, enforcement } : r))
-        : rs
+      rs ? rs.map((r) => (r.id === rule.id ? { ...r, enforcement } : r)) : rs
     );
     try {
       await updateRule(datasetId, rule.id, { enforcement });
@@ -124,257 +137,242 @@ export function RuleEditor({ datasetId, columns }: Props) {
   const selectedMeta = RULE_TYPES.find((r) => r.value === draft.rule)!;
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Validation rules</h2>
-        {!adding && (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="text-xs font-semibold text-primary hover:text-primary-dark"
-          >
-            + Add rule
-          </button>
+    <Card>
+      <CardHeader
+        title="Validation rules"
+        actions={
+          !adding && (
+            <Button variant="white" size="sm" onClick={() => setAdding(true)}>
+              <IconPlus />
+              Add rule
+            </Button>
+          )
+        }
+      />
+
+      <div className="p-4">
+        {error && (
+          <div className="mb-3">
+            <Alert>{error}</Alert>
+          </div>
         )}
-      </div>
 
-      {error && (
-        <div className="mb-3 rounded-md border border-danger/30 bg-danger-soft px-3 py-2 text-xs text-danger">
-          {error}
-        </div>
-      )}
+        {rules === null && (
+          <p className="text-xs text-foreground-muted">Loading rules…</p>
+        )}
 
-      {rules === null && (
-        <p className="text-xs text-foreground-muted">Loading rules…</p>
-      )}
+        {rules !== null && rules.length === 0 && !adding && (
+          <p className="text-xs text-foreground-muted">
+            No rules yet. Column and row rules ride the streaming chain; a
+            mandatory dataset-scope rule (e.g. uniqueness) causes the run to
+            stage before validating.
+          </p>
+        )}
 
-      {rules !== null && rules.length === 0 && !adding && (
-        <p className="text-xs text-foreground-muted">
-          No rules yet. Column and row rules ride the streaming chain; a
-          mandatory dataset-scope rule (e.g. uniqueness) causes the run to
-          stage before validating.
-        </p>
-      )}
+        {rules !== null && rules.length > 0 && (
+          <ul className="mb-3 flex flex-col divide-y divide-border">
+            {rules.map((rule) => (
+              <li key={rule.id} className="flex flex-wrap items-center gap-3 py-2.5 text-sm">
+                <div className="flex-1">
+                  <span className="font-medium">
+                    {RULE_TYPES.find((r) => r.value === rule.rule)?.label ?? rule.rule}
+                  </span>
+                  {rule.column && (
+                    <span className="text-foreground-muted"> · {rule.column}</span>
+                  )}
+                  {rule.rule === "expression" && typeof rule.args.expr === "string" && (
+                    <code className="ml-2 rounded bg-surface-soft px-1.5 py-0.5 text-xs">
+                      {rule.args.expr}
+                    </code>
+                  )}
+                  {rule.rule === "unique" && Array.isArray(rule.args.columns) && (
+                    <code className="ml-2 rounded bg-surface-soft px-1.5 py-0.5 text-xs">
+                      {(rule.args.columns as string[]).join(", ")}
+                    </code>
+                  )}
+                </div>
 
-      {rules !== null && rules.length > 0 && (
-        <ul className="mb-3 flex flex-col divide-y divide-border">
-          {rules.map((rule) => (
-            <li key={rule.id} className="flex items-center gap-3 py-2 text-sm">
-              <div className="flex-1">
-                <span className="font-medium">
-                  {RULE_TYPES.find((r) => r.value === rule.rule)?.label ?? rule.rule}
-                </span>
-                {rule.column && (
-                  <span className="text-foreground-muted"> · {rule.column}</span>
-                )}
-                {rule.rule === "expression" && typeof rule.args.expr === "string" && (
-                  <code className="ml-2 rounded bg-surface-soft px-1.5 py-0.5 text-xs">
-                    {rule.args.expr}
-                  </code>
-                )}
-                {rule.rule === "unique" && Array.isArray(rule.args.columns) && (
-                  <code className="ml-2 rounded bg-surface-soft px-1.5 py-0.5 text-xs">
-                    {(rule.args.columns as string[]).join(", ")}
-                  </code>
-                )}
-              </div>
-
-              <label className="flex items-center gap-1.5 text-xs font-medium">
-                <input
-                  type="checkbox"
-                  checked={rule.enforcement === "mandatory"}
-                  onChange={() => toggleEnforcement(rule)}
-                  className="accent-primary"
+                <SegmentedToggle
+                  name={`enforcement-${rule.id}`}
+                  options={ENFORCEMENT_OPTIONS}
+                  value={rule.enforcement}
+                  onChange={(v) => changeEnforcement(rule, v)}
                 />
-                Mandatory
-              </label>
 
-              {rule.enforcement === "move_on" && (
-                <select
-                  value={rule.on_violation}
-                  onChange={(e) =>
-                    changeOnViolation(rule, e.target.value as OnViolation)
-                  }
-                  className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
+                {rule.enforcement === "move_on" && (
+                  <select
+                    value={rule.on_violation}
+                    onChange={(e) =>
+                      changeOnViolation(rule, e.target.value as OnViolation)
+                    }
+                    className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
+                  >
+                    <option value="keep">Keep row</option>
+                    <option value="reject_row">Reject row</option>
+                  </select>
+                )}
+
+                <Button
+                  variant="white"
+                  size="sm"
+                  className="border-0 !px-0 !py-0 text-foreground-muted hover:bg-transparent hover:text-danger"
+                  onClick={() => remove(rule)}
                 >
-                  <option value="keep">Keep row</option>
-                  <option value="reject_row">Reject row</option>
-                </select>
-              )}
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
 
-              <button
-                type="button"
-                onClick={() => remove(rule)}
-                className="text-xs text-foreground-muted hover:text-danger"
-              >
-                Remove
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {adding && (
-        <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-soft p-3">
-          <div className="flex flex-wrap gap-3">
-            <label className="flex flex-col gap-1 text-xs font-medium">
-              Rule type
-              <select
-                value={draft.rule}
-                onChange={(e) => onRuleTypeChange(e.target.value as RuleType)}
-                className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm"
-              >
-                {RULE_TYPES.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            {selectedMeta.scope === "column" && (
-              <label className="flex flex-col gap-1 text-xs font-medium">
-                Column
+        {adding && (
+          <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-soft p-3">
+            <div className="flex flex-wrap gap-3">
+              <FormField label="Rule type">
                 <select
-                  value={draft.column ?? ""}
-                  onChange={(e) =>
-                    setDraft((d) => ({ ...d, column: e.target.value || null }))
-                  }
-                  className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm"
+                  value={draft.rule}
+                  onChange={(e) => onRuleTypeChange(e.target.value as RuleType)}
+                  className={inputClass}
                 >
-                  <option value="">Select a column</option>
-                  {columns.map((c) => (
-                    <option key={c.name} value={c.name}>
-                      {c.name}
+                  {RULE_TYPES.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
                     </option>
                   ))}
                 </select>
-              </label>
-            )}
+              </FormField>
 
-            {draft.rule === "unique" && (
-              <label className="flex flex-1 flex-col gap-1 text-xs font-medium">
-                Columns (comma-separated)
-                <input
-                  type="text"
-                  placeholder="guid, ledger"
-                  onChange={(e) =>
-                    setDraft((d) => ({
-                      ...d,
-                      scope: "dataset",
-                      args: {
-                        columns: e.target.value
-                          .split(",")
-                          .map((c) => c.trim())
-                          .filter(Boolean),
-                      },
-                    }))
-                  }
-                  className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm"
-                />
-              </label>
-            )}
-
-            {draft.rule === "expression" && (
-              <>
-                <label className="flex flex-col gap-1 text-xs font-medium">
-                  Scope
+              {selectedMeta.scope === "column" && (
+                <FormField label="Column">
                   <select
-                    value={draft.scope}
+                    value={draft.column ?? ""}
                     onChange={(e) =>
-                      setDraft((d) => ({
-                        ...d,
-                        scope: e.target.value as "row" | "dataset",
-                      }))
+                      setDraft((d) => ({ ...d, column: e.target.value || null }))
                     }
-                    className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm"
+                    className={inputClass}
                   >
-                    <option value="row">Row</option>
-                    <option value="dataset">Dataset</option>
+                    <option value="">Select a column</option>
+                    {columns.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
-                </label>
-                <label className="flex flex-1 flex-col gap-1 text-xs font-medium">
-                  Expression
+                </FormField>
+              )}
+
+              {draft.rule === "unique" && (
+                <FormField label="Columns (comma-separated)" className="flex-1">
                   <input
                     type="text"
-                    placeholder="effective_date >= voucher_date"
+                    placeholder="guid, ledger"
                     onChange={(e) =>
                       setDraft((d) => ({
                         ...d,
-                        args: { expr: e.target.value },
+                        scope: "dataset",
+                        args: {
+                          columns: e.target.value
+                            .split(",")
+                            .map((c) => c.trim())
+                            .filter(Boolean),
+                        },
                       }))
                     }
-                    className="rounded-md border border-border bg-surface px-2 py-1.5 font-mono text-sm"
+                    className={inputClass}
                   />
-                </label>
-              </>
+                </FormField>
+              )}
+
+              {draft.rule === "expression" && (
+                <>
+                  <FormField label="Scope">
+                    <select
+                      value={draft.scope}
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          scope: e.target.value as "row" | "dataset",
+                        }))
+                      }
+                      className={inputClass}
+                    >
+                      <option value="row">Row</option>
+                      <option value="dataset">Dataset</option>
+                    </select>
+                  </FormField>
+                  <FormField label="Expression" className="flex-1">
+                    <input
+                      type="text"
+                      placeholder="effective_date >= voucher_date"
+                      onChange={(e) =>
+                        setDraft((d) => ({
+                          ...d,
+                          args: { expr: e.target.value },
+                        }))
+                      }
+                      className={`${inputClass} font-mono`}
+                    />
+                  </FormField>
+                </>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-foreground-muted">
+                  Enforcement
+                </span>
+                <SegmentedToggle
+                  name="draft-enforcement"
+                  options={ENFORCEMENT_OPTIONS}
+                  value={draft.enforcement}
+                  onChange={(v) => setDraft((d) => ({ ...d, enforcement: v }))}
+                />
+              </div>
+              {draft.enforcement === "move_on" && (
+                <FormField label="On violation">
+                  <select
+                    value={draft.on_violation}
+                    onChange={(e) =>
+                      setDraft((d) => ({
+                        ...d,
+                        on_violation: e.target.value as OnViolation,
+                      }))
+                    }
+                    className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
+                  >
+                    <option value="keep">Keep row</option>
+                    <option value="reject_row">Reject row</option>
+                  </select>
+                </FormField>
+              )}
+            </div>
+
+            {draft.scope === "dataset" && draft.enforcement === "mandatory" && (
+              <Alert variant="warning">
+                Mandatory dataset-scope rules force the run to stage the full
+                dataset before validating (§7.4).
+              </Alert>
             )}
-          </div>
 
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-xs font-medium">
-              <input
-                type="checkbox"
-                checked={draft.enforcement === "mandatory"}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    enforcement: e.target.checked ? "mandatory" : "move_on",
-                  }))
-                }
-                className="accent-primary"
-              />
-              Mandatory (halts the run at the gate)
-            </label>
-            {draft.enforcement === "move_on" && (
-              <label className="flex items-center gap-1.5 text-xs font-medium">
-                On violation
-                <select
-                  value={draft.on_violation}
-                  onChange={(e) =>
-                    setDraft((d) => ({
-                      ...d,
-                      on_violation: e.target.value as OnViolation,
-                    }))
-                  }
-                  className="rounded-md border border-border bg-surface px-2 py-1 text-xs"
-                >
-                  <option value="keep">Keep row</option>
-                  <option value="reject_row">Reject row</option>
-                </select>
-              </label>
-            )}
+            <div className="flex gap-2">
+              <Button size="sm" disabled={saving} onClick={submitDraft}>
+                {saving ? "Saving…" : "Save rule"}
+              </Button>
+              <Button
+                variant="white"
+                size="sm"
+                onClick={() => {
+                  setAdding(false);
+                  setDraft(emptyDraft());
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
-
-          {draft.scope === "dataset" && draft.enforcement === "mandatory" && (
-            <p className="text-xs text-warning">
-              Mandatory dataset-scope rules force the run to stage the full
-              dataset before validating (§7.4).
-            </p>
-          )}
-
-          <div className="flex gap-2">
-            <button
-              type="button"
-              disabled={saving}
-              onClick={submitDraft}
-              className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark disabled:opacity-50"
-            >
-              {saving ? "Saving…" : "Save rule"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAdding(false);
-                setDraft(emptyDraft());
-              }}
-              className="rounded-md px-3 py-1.5 text-xs font-medium text-foreground-muted hover:bg-surface"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </Card>
   );
 }

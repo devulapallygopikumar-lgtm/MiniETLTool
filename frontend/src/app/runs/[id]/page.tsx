@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
@@ -12,6 +11,7 @@ import {
 } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
+import { Alert, Breadcrumb, Button, Card, CardHeader, IconX } from "@/app/components/ui";
 import type { Run, RunValidation, ValidationIssueRow } from "@/app/lib/types";
 
 const TERMINAL_STATES = new Set([
@@ -91,11 +91,7 @@ export default function RunPage() {
   }
 
   if (error && !run) {
-    return (
-      <div className="rounded-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-        {error}
-      </div>
-    );
+    return <Alert>{error}</Alert>;
   }
 
   if (!run) {
@@ -108,17 +104,18 @@ export default function RunPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-1">
+          <Breadcrumb
+            items={[
+              { label: "Datasets", href: "/" },
+              { label: run.dataset_name, href: `/datasets/${run.dataset_id}` },
+              { label: "Run" },
+            ]}
+          />
           <h1 className="text-xl font-semibold">
             Run <span className="font-mono text-base">{run.id}</span>
           </h1>
-          <Link
-            href={`/datasets/${run.dataset_id}`}
-            className="text-sm text-primary hover:text-primary-dark"
-          >
-            {run.dataset_name}
-          </Link>
         </div>
         <div className="flex items-center gap-2">
           <StateBadge state={run.state} />
@@ -131,11 +128,7 @@ export default function RunPage() {
         </div>
       </div>
 
-      {run.error && (
-        <div className="rounded-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-          {run.error}
-        </div>
-      )}
+      {run.error && <Alert>{run.error}</Alert>}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Rows read" value={run.rows_read} />
@@ -153,145 +146,145 @@ export default function RunPage() {
       </div>
 
       {validation && (
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <h2 className="mb-3 text-sm font-semibold">
-            Per-rule results{" "}
-            <span className="font-normal text-foreground-muted">
-              (blocking first)
-            </span>
-          </h2>
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-border text-xs uppercase tracking-wide text-foreground-muted">
-              <tr>
-                <th className="py-2 font-medium">Rule</th>
-                <th className="py-2 font-medium">Scope</th>
-                <th className="py-2 font-medium">Enforcement</th>
-                <th className="py-2 font-medium">Violations</th>
-                <th className="py-2 font-medium">Pass rate</th>
-                <th className="py-2 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...validation.results]
-                .sort((a, b) => {
-                  const aBlock = a.enforcement === "mandatory" && a.violations > 0;
-                  const bBlock = b.enforcement === "mandatory" && b.violations > 0;
-                  if (aBlock !== bBlock) return aBlock ? -1 : 1;
-                  return b.violations - a.violations;
-                })
-                .map((r) => (
-                  <tr key={r.rule_id} className="border-b border-border last:border-0">
-                    <td className="py-2">
-                      {r.rule}
-                      {r.column && (
-                        <span className="text-foreground-muted"> · {r.column}</span>
-                      )}
-                    </td>
-                    <td className="py-2 text-foreground-muted">{r.scope}</td>
-                    <td className="py-2 text-foreground-muted capitalize">
-                      {r.enforcement.replace("_", " ")}
-                    </td>
-                    <td
-                      className={`py-2 font-semibold ${
-                        r.violations > 0
-                          ? r.enforcement === "mandatory"
-                            ? "text-danger"
-                            : "text-warning"
-                          : "text-success"
-                      }`}
-                    >
-                      {r.violations}
-                    </td>
-                    <td className="py-2 text-foreground-muted">
-                      {(r.pass_rate * 100).toFixed(1)}%
-                    </td>
-                    <td className="py-2">
-                      {r.violations > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => selectRule(r.rule_id)}
-                          className="text-xs font-semibold text-primary hover:text-primary-dark"
-                        >
-                          View sample
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              {failingRules.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="py-4 text-center text-foreground-muted">
-                    No violations.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {selectedRule && (
-        <div className="rounded-lg border border-border bg-surface p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold">
-              Failing rows — {selectedRule}
-            </h2>
-            <button
-              type="button"
-              onClick={closeSample}
-              className="text-xs text-foreground-muted hover:text-foreground"
-            >
-              Close
-            </button>
-          </div>
-          {rowsError && (
-            <p className="text-xs text-danger">{rowsError}</p>
-          )}
-          {!rowsError && rows === null && (
-            <p className="text-xs text-foreground-muted">Loading sample…</p>
-          )}
-          {rows && rows.length === 0 && (
-            <p className="text-xs text-foreground-muted">No sample rows returned.</p>
-          )}
-          {rows && rows.length > 0 && (
+        <Card>
+          <CardHeader
+            title={
+              <>
+                Per-rule results{" "}
+                <span className="font-normal text-foreground-muted">
+                  (blocking first)
+                </span>
+              </>
+            }
+          />
+          <div className="p-4 pt-0">
             <table className="w-full text-left text-sm">
               <thead className="border-b border-border text-xs uppercase tracking-wide text-foreground-muted">
                 <tr>
-                  <th className="py-1.5 font-medium">Row</th>
-                  <th className="py-1.5 font-medium">Column</th>
-                  <th className="py-1.5 font-medium">Value</th>
-                  <th className="py-1.5 font-medium">Message</th>
+                  <th className="py-2 font-medium">Rule</th>
+                  <th className="py-2 font-medium">Scope</th>
+                  <th className="py-2 font-medium">Enforcement</th>
+                  <th className="py-2 font-medium">Violations</th>
+                  <th className="py-2 font-medium">Pass rate</th>
+                  <th className="py-2 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, i) => (
-                  <tr key={i} className="border-b border-border last:border-0">
-                    <td className="py-1.5 font-mono text-xs">{row.row_ordinal}</td>
-                    <td className="py-1.5 text-foreground-muted">
-                      {row.column_name ?? "—"}
+                {[...validation.results]
+                  .sort((a, b) => {
+                    const aBlock = a.enforcement === "mandatory" && a.violations > 0;
+                    const bBlock = b.enforcement === "mandatory" && b.violations > 0;
+                    if (aBlock !== bBlock) return aBlock ? -1 : 1;
+                    return b.violations - a.violations;
+                  })
+                  .map((r) => (
+                    <tr key={r.rule_id} className="border-b border-border last:border-0">
+                      <td className="py-2">
+                        {r.rule}
+                        {r.column && (
+                          <span className="text-foreground-muted"> · {r.column}</span>
+                        )}
+                      </td>
+                      <td className="py-2 text-foreground-muted">{r.scope}</td>
+                      <td className="py-2 text-foreground-muted capitalize">
+                        {r.enforcement.replace("_", " ")}
+                      </td>
+                      <td
+                        className={`py-2 font-semibold ${
+                          r.violations > 0
+                            ? r.enforcement === "mandatory"
+                              ? "text-danger"
+                              : "text-warning"
+                            : "text-success"
+                        }`}
+                      >
+                        {r.violations}
+                      </td>
+                      <td className="py-2 text-foreground-muted">
+                        {(r.pass_rate * 100).toFixed(1)}%
+                      </td>
+                      <td className="py-2">
+                        {r.violations > 0 && (
+                          <Button
+                            variant="white"
+                            size="sm"
+                            className="border-0 !px-0 !py-0 text-primary hover:bg-transparent hover:text-primary-dark"
+                            onClick={() => selectRule(r.rule_id)}
+                          >
+                            View sample
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                {failingRules.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-4 text-center text-foreground-muted">
+                      No violations.
                     </td>
-                    <td className="py-1.5">
-                      <code className="rounded bg-danger-soft px-1.5 py-0.5 text-xs text-danger">
-                        {row.offending_value ?? "null"}
-                      </code>
-                    </td>
-                    <td className="py-1.5 text-foreground-muted">{row.message}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
-          )}
-        </div>
+          </div>
+        </Card>
+      )}
+
+      {selectedRule && (
+        <Card>
+          <CardHeader
+            title={`Failing rows — ${selectedRule}`}
+            actions={
+              <Button variant="outline" size="sm" iconOnly onClick={closeSample} title="Close">
+                <IconX />
+              </Button>
+            }
+          />
+          <div className="p-4 pt-0">
+            {rowsError && <p className="text-xs text-danger">{rowsError}</p>}
+            {!rowsError && rows === null && (
+              <p className="text-xs text-foreground-muted">Loading sample…</p>
+            )}
+            {rows && rows.length === 0 && (
+              <p className="text-xs text-foreground-muted">No sample rows returned.</p>
+            )}
+            {rows && rows.length > 0 && (
+              <table className="w-full text-left text-sm">
+                <thead className="border-b border-border text-xs uppercase tracking-wide text-foreground-muted">
+                  <tr>
+                    <th className="py-1.5 font-medium">Row</th>
+                    <th className="py-1.5 font-medium">Column</th>
+                    <th className="py-1.5 font-medium">Value</th>
+                    <th className="py-1.5 font-medium">Message</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, i) => (
+                    <tr key={i} className="border-b border-border last:border-0">
+                      <td className="py-1.5 font-mono text-xs">{row.row_ordinal}</td>
+                      <td className="py-1.5 text-foreground-muted">
+                        {row.column_name ?? "—"}
+                      </td>
+                      <td className="py-1.5">
+                        <code className="rounded bg-danger-soft px-1.5 py-0.5 text-xs text-danger">
+                          {row.offending_value ?? "null"}
+                        </code>
+                      </td>
+                      <td className="py-1.5 text-foreground-muted">{row.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </Card>
       )}
 
       {run.rows_rejected > 0 && (
-        <a
-          href={getRunRejectsUrl(id)}
-          className="w-fit rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium hover:bg-surface-soft"
-        >
+        <Button href={getRunRejectsUrl(id)} variant="white" className="w-fit">
           Download {run.rows_rejected} rejected row
           {run.rows_rejected === 1 ? "" : "s"} (CSV)
-        </a>
+        </Button>
       )}
     </div>
   );

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ApiError, listDatasets } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
+import { Alert, Button, Card, CardHeader, IconUpload } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function DatasetsPage() {
@@ -37,24 +38,20 @@ export default function DatasetsPage() {
             One dataset per discovered entity — sheet, table or record type.
           </p>
         </div>
-        <Link
-          href="/upload"
-          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-dark"
-        >
+        <Button href="/upload">
+          <IconUpload />
           Upload a source
-        </Link>
+        </Button>
       </div>
 
-      {error && (
-        <div className="rounded-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
-      )}
+      {error && <Alert>{error}</Alert>}
 
       {!error && datasets === null && (
-        <div className="rounded-md border border-border bg-surface px-4 py-6 text-center text-sm text-foreground-muted">
-          Loading datasets…
-        </div>
+        <Card>
+          <div className="px-4 py-6 text-center text-sm text-foreground-muted">
+            Loading datasets…
+          </div>
+        </Card>
       )}
 
       {datasets !== null && datasets.length === 0 && !error && (
@@ -63,17 +60,17 @@ export default function DatasetsPage() {
             No datasets yet. Upload a file to discover entities and generate
             mappings automatically.
           </p>
-          <Link
-            href="/upload"
-            className="mt-3 inline-block text-sm font-semibold text-primary hover:text-primary-dark"
-          >
+          <Button href="/upload" variant="outline" size="sm" className="mt-3">
             Upload your first source →
-          </Link>
+          </Button>
         </div>
       )}
 
       {datasets !== null && datasets.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <Card className="overflow-hidden">
+          <CardHeader
+            title={`${datasets.length} dataset${datasets.length === 1 ? "" : "s"}`}
+          />
           <table className="w-full text-left text-sm">
             <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
@@ -120,7 +117,7 @@ export default function DatasetsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        </Card>
       )}
     </div>
   );
