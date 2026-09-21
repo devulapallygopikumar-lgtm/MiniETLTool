@@ -29,6 +29,22 @@ uvicorn resolve it and bind both `127.0.0.1` and `::1`.
 The frontend (`../frontend`) expects the API at `http://localhost:8000` by
 default (`NEXT_PUBLIC_API_BASE`).
 
+### This machine's Postgres instances
+
+There are two local options, and `.env` currently points at the first:
+
+| Instance | Port | Notes |
+|---|---|---|
+| Real PostgreSQL 16 install (`postgresql-x64-16` Windows service) | `5434` | The primary one going forward. `mini_etl` database, `postgres` superuser (password known to the project owner, not stored in this repo). |
+| Portable, no-admin Postgres 16 (`.pgsql16/`) | `5555` | Kept as a fallback from before the real install existed — see `.pgsql16-setup.ps1` to start it. `mini_etl` database there too, `postgres`/`postgres` (trust auth, no real password). |
+
+If a password contains a character that's special in a URL (e.g. `@`),
+percent-encode it in `DATABASE_URL` (`@` → `%40`). Alembic's config loader
+goes through `configparser`, which separately treats a literal `%` as the
+start of its own interpolation syntax — `migrations/env.py` escapes that
+automatically (doubles any `%` before handing the URL to Alembic), so you
+don't need to do anything extra beyond the normal URL percent-encoding.
+
 ## Structure
 
 | Path | Purpose |
