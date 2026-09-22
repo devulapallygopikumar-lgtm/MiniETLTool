@@ -68,6 +68,20 @@ export function getDataset(id: string): Promise<Dataset> {
   return request(`/api/v1/datasets/${id}`);
 }
 
+export function previewDataset(
+  id: string,
+  limit = 50
+): Promise<Record<string, unknown>[]> {
+  return request(`/api/v1/datasets/${id}/preview?limit=${limit}`);
+}
+
+export function previewLoaded(
+  id: string,
+  limit = 50
+): Promise<Record<string, unknown>[]> {
+  return request(`/api/v1/datasets/${id}/loaded?limit=${limit}`);
+}
+
 export interface UploadResult {
   datasets: Dataset[];
 }

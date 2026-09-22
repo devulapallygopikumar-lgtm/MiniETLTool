@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ApiError, getDataset, getRunValidation, runDataset } from "@/app/lib/api";
+import { ApiError, getDataset, getRunValidation, previewDataset, runDataset } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { ValidationPanel } from "@/app/components/ValidationPanel";
 import { RuleEditor } from "@/app/components/RuleEditor";
 import { TransformEditor } from "@/app/components/TransformEditor";
 import { RunHistory } from "@/app/components/RunHistory";
+import { DataGrid } from "@/app/components/DataGrid";
 import { Alert, Breadcrumb, Button, Card, CardHeader, IconInfo } from "@/app/components/ui";
 import type { Dataset, RunValidation } from "@/app/lib/types";
 
@@ -20,6 +21,9 @@ export default function DatasetPage() {
   const [validation, setValidation] = useState<RunValidation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [preview, setPreview] = useState<Record<string, unknown>[] | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   function refresh() {
     getDataset(id)
@@ -37,6 +41,18 @@ export default function DatasetPage() {
   }
 
   useEffect(refresh, [id]);
+
+  async function loadPreview() {
+    setPreviewLoading(true);
+    setPreviewError(null);
+    try {
+      setPreview(await previewDataset(id, 25));
+    } catch (err) {
+      setPreviewError(err instanceof ApiError ? err.message : "Failed to load preview.");
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
 
   async function handleRun() {
     setRunning(true);
@@ -93,6 +109,27 @@ export default function DatasetPage() {
         />
 
         <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader
+              title="Source preview"
+              actions={
+                <Button variant="white" size="sm" disabled={previewLoading} onClick={loadPreview}>
+                  {previewLoading ? "Loading…" : preview ? "Refresh" : "Show original data"}
+                </Button>
+              }
+            />
+            <div className="p-4">
+              <p className="mb-3 text-xs text-foreground-muted">
+                Read fresh from the source file, exactly as parsed — no
+                rules or transforms applied. First 25 rows only.
+              </p>
+              {previewError && <Alert>{previewError}</Alert>}
+              {!previewError && preview && (
+                <DataGrid rows={preview} columns={dataset.columns.map((c) => c.name)} />
+              )}
+            </div>
+          </Card>
+
           <RuleEditor datasetId={dataset.id} columns={dataset.columns} />
 
           <TransformEditor datasetId={dataset.id} columns={dataset.columns} />
