@@ -8,6 +8,7 @@ import { StateBadge } from "@/app/components/StateBadge";
 import { ValidationPanel } from "@/app/components/ValidationPanel";
 import { RuleEditor } from "@/app/components/RuleEditor";
 import { TransformEditor } from "@/app/components/TransformEditor";
+import { RunHistory } from "@/app/components/RunHistory";
 import { Alert, Breadcrumb, Button, Card, CardHeader, IconInfo } from "@/app/components/ui";
 import type { Dataset, RunValidation } from "@/app/lib/types";
 
@@ -135,6 +136,8 @@ export default function DatasetPage() {
               )}
             </div>
           </Card>
+
+          <RunHistory datasetId={dataset.id} />
         </div>
       </div>
     </div>

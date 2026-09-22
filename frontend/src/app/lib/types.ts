@@ -94,6 +94,7 @@ export interface Run {
   dataset_name: string;
   state: RunState;
   gate_state: GateState;
+  created_at: string;
   started_at: string | null;
   finished_at: string | null;
   rows_read: number;

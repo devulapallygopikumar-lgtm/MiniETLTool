@@ -135,6 +135,7 @@ class RunOut(BaseModel):
     dataset_name: str
     state: RunState
     gate_state: GateState
+    created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
     rows_read: int

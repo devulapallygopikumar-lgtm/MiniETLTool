@@ -20,6 +20,7 @@ def _run_out(run: models.Run, dataset_name: str) -> schemas.RunOut:
         dataset_name=dataset_name,
         state=run.state,
         gate_state=run.gate_state,
+        created_at=run.created_at,
         started_at=run.started_at,
         finished_at=run.finished_at,
         rows_read=run.rows_read,
@@ -59,6 +60,18 @@ def start_run(dataset_id: str, background_tasks: BackgroundTasks, db: Session = 
 
     background_tasks.add_task(execute_run, run.id)
     return _run_out(run, dataset.name)
+
+
+@router.get("/datasets/{dataset_id}/runs", response_model=list[schemas.RunOut])
+def list_runs(dataset_id: str, db: Session = Depends(get_db)):
+    dataset = get_dataset_or_404(db, dataset_id)
+    rows = (
+        db.query(models.Run)
+        .filter_by(dataset_id=dataset_id)
+        .order_by(models.Run.created_at.desc())
+        .all()
+    )
+    return [_run_out(r, dataset.name) for r in rows]
 
 
 @router.get("/runs/{run_id}", response_model=schemas.RunOut)

@@ -113,6 +113,9 @@ class Run(Base):
     tenant_id: Mapped[str] = mapped_column(String(64), default=settings.default_tenant_id, index=True)
     dataset_id: Mapped[str] = mapped_column(String(36), ForeignKey("datasets.id"), index=True)
     mapping_id: Mapped[str] = mapped_column(String(36), ForeignKey("mappings.id"))
+    # Set at creation, unlike started_at (set once the background task
+    # actually begins) -- the stable sort key for a dataset's run history.
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     # A run is reproducible against the mapping version it ran with
     # (ARCHITECTURE.md §20.6 #5).
     mapping_version: Mapped[int] = mapped_column(Integer)

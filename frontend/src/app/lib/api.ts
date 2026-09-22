@@ -143,6 +143,10 @@ export function runDataset(datasetId: string): Promise<Run> {
   return request(`/api/v1/datasets/${datasetId}/run`, { method: "POST" });
 }
 
+export function listRuns(datasetId: string): Promise<Run[]> {
+  return request(`/api/v1/datasets/${datasetId}/runs`);
+}
+
 export function getRun(runId: string): Promise<Run> {
   return request(`/api/v1/runs/${runId}`);
 }
