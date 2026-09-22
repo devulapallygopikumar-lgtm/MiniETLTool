@@ -45,6 +45,20 @@ const OPS: { value: TransformOp; label: string }[] = [
   { value: "project", label: "Keep only these columns" },
 ];
 
+const OP_DESCRIPTIONS: Record<TransformOp, string> = {
+  filter: "Drop rows that don't match an expression. Dropped rows are recorded as rejects, not silently discarded.",
+  dedupe: "Drop rows that repeat an earlier value in the given column(s), keeping the first occurrence.",
+  sort: "Reorder the surviving rows by this column, ascending or descending.",
+  rename: "Rename a column. Later transforms in the same run can refer to it by its new name.",
+  lookup: "Add columns to each row by matching a value against another dataset's already-loaded rows.",
+  derive: "Add a new column whose value is computed from an expression over the row's other columns.",
+  cast: "Reparse a column as a declared type (integer/number/date/string). Values that don't fit become null.",
+  mask: "Hash (deterministic), redact (fixed replacement), or partially hide a column's value.",
+  fill_default: "Replace a null in this column with a fixed value. Validation still sees the original null.",
+  sequence: "Add a new column of sequential numbers, assigned in the final row order after sort/filter/dedupe.",
+  project: "Keep only the listed columns in the loaded output; drop everything else.",
+};
+
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
 
 function emptyDraft(): NewTransform {
@@ -190,7 +204,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
             {transforms.map((t) => (
               <li key={t.id} className="flex items-center gap-3 py-2.5 text-sm">
                 <div className="flex-1">
-                  <span className="font-medium">
+                  <span className="cursor-help font-medium" title={OP_DESCRIPTIONS[t.op]}>
                     {OPS.find((o) => o.value === t.op)?.label ?? t.op}
                   </span>
                   <code className="ml-2 rounded bg-surface-soft px-1.5 py-0.5 text-xs">
@@ -218,9 +232,10 @@ export function TransformEditor({ datasetId, columns }: Props) {
                   value={draft.op}
                   onChange={(e) => onOpChange(e.target.value as TransformOp)}
                   className={inputClass}
+                  title={OP_DESCRIPTIONS[draft.op]}
                 >
                   {OPS.map((o) => (
-                    <option key={o.value} value={o.value}>
+                    <option key={o.value} value={o.value} title={OP_DESCRIPTIONS[o.value]}>
                       {o.label}
                     </option>
                   ))}
@@ -482,6 +497,8 @@ export function TransformEditor({ datasetId, columns }: Props) {
                 </FormField>
               )}
             </div>
+
+            <p className="text-xs text-foreground-muted">{OP_DESCRIPTIONS[draft.op]}</p>
 
             <div className="flex gap-2">
               <Button size="sm" disabled={saving} onClick={submitDraft}>
