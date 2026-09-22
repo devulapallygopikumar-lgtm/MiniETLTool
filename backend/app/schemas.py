@@ -90,6 +90,31 @@ class RulePatch(BaseModel):
     on_violation: OnViolation | None = None
 
 
+TransformOp = Literal["fill_default"]
+
+
+class TransformOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    dataset_id: str
+    column: str
+    op: TransformOp
+    args: dict[str, Any]
+
+
+class NewTransform(BaseModel):
+    column: str
+    op: TransformOp
+    args: dict[str, Any] = {}
+
+
+class TransformPatch(BaseModel):
+    column: str | None = None
+    op: TransformOp | None = None
+    args: dict[str, Any] | None = None
+
+
 class RunOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

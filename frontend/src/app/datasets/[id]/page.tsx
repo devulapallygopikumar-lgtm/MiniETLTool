@@ -7,6 +7,7 @@ import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { ValidationPanel } from "@/app/components/ValidationPanel";
 import { RuleEditor } from "@/app/components/RuleEditor";
+import { TransformEditor } from "@/app/components/TransformEditor";
 import { Alert, Breadcrumb, Button, Card, CardHeader, IconInfo } from "@/app/components/ui";
 import type { Dataset, RunValidation } from "@/app/lib/types";
 
@@ -92,6 +93,8 @@ export default function DatasetPage() {
 
         <div className="flex flex-col gap-6">
           <RuleEditor datasetId={dataset.id} columns={dataset.columns} />
+
+          <TransformEditor datasetId={dataset.id} columns={dataset.columns} />
 
           <Card>
             <CardHeader title="Pinned schema" />

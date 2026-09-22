@@ -56,6 +56,16 @@ export interface ValidationRule {
   on_violation: OnViolation;
 }
 
+export type TransformOp = "fill_default";
+
+export interface Transform {
+  id: string;
+  dataset_id: string;
+  column: string;
+  op: TransformOp;
+  args: Record<string, unknown>;
+}
+
 export type RunState =
   | "queued"
   | "running"

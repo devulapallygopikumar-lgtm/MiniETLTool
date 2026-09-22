@@ -7,6 +7,7 @@ import type {
   Dataset,
   Run,
   RunValidation,
+  Transform,
   ValidationIssueRow,
   ValidationRule,
 } from "./types";
@@ -108,6 +109,30 @@ export function updateRule(
 
 export function deleteRule(datasetId: string, ruleId: string): Promise<void> {
   return request(`/api/v1/datasets/${datasetId}/rules/${ruleId}`, {
+    method: "DELETE",
+  });
+}
+
+// ---- Transforms ----
+
+export function listTransforms(datasetId: string): Promise<Transform[]> {
+  return request(`/api/v1/datasets/${datasetId}/transforms`);
+}
+
+export type NewTransform = Omit<Transform, "id" | "dataset_id">;
+
+export function createTransform(
+  datasetId: string,
+  transform: NewTransform
+): Promise<Transform> {
+  return request(`/api/v1/datasets/${datasetId}/transforms`, {
+    method: "POST",
+    body: JSON.stringify(transform),
+  });
+}
+
+export function deleteTransform(datasetId: string, transformId: string): Promise<void> {
+  return request(`/api/v1/datasets/${datasetId}/transforms/${transformId}`, {
     method: "DELETE",
   });
 }

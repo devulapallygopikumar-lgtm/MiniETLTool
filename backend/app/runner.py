@@ -1,9 +1,9 @@
 """Discovery (fan-out) and run orchestration (ARCHITECTURE.md §20.3).
 
 Discovery: one Dataset + one Mapping per discovered entity (§4.5).
-A run: parse -> stage -> validate -> gate -> load, always staging
-(§20.3 hour 7's simplification), running as a FastAPI background task
-(§20.3 hour 8).
+A run: parse -> stage -> validate -> gate -> transform -> load, always
+staging (§20.3 hour 7's simplification), running as a FastAPI background
+task (§20.3 hour 8).
 """
 
 from datetime import datetime, timezone
@@ -17,6 +17,7 @@ from .database import SessionLocal
 from .readers.base import discover_entities, read_rows
 from .readers.xml_tally_masters_reader import looks_like_tally_masters
 from .readers.xml_tally_reader import looks_like_tally
+from .transforms import TransformSpec, apply_transforms
 from .validation import RuleSpec, run_validation
 
 
@@ -165,9 +166,11 @@ def _execute_run(db: Session, run_id: str) -> None:
         db.commit()
         return
 
-    run.state = "loading"
-    dataset.state = "loading"
+    run.state = "transforming"
     db.commit()
+
+    transform_rows = db.query(models.Transform).filter_by(dataset_id=dataset.id).all()
+    transform_specs = [TransformSpec(t.id, t.column, t.op, t.args_json) for t in transform_rows]
 
     rejected = outcome.rejected_ordinals
     written = 0
@@ -175,16 +178,23 @@ def _execute_run(db: Session, run_id: str) -> None:
     loaded_rows_batch: list[dict[str, str | None]] = []
     for i, row in enumerate(rows, start=1):
         if i in rejected:
+            # Rejects keep the original values -- diagnosing a reject means
+            # seeing what was actually there, not the filled-in version.
             db.add(
                 models.RejectedRow(
                     run_id=run.id, row_ordinal=i, reason="advisory rule set to reject_row", data_json=row
                 )
             )
         else:
-            db.add(models.LoadedRow(dataset_id=dataset.id, run_id=run.id, row_ordinal=i, data_json=row))
+            loaded_row = apply_transforms(row, transform_specs)
+            db.add(models.LoadedRow(dataset_id=dataset.id, run_id=run.id, row_ordinal=i, data_json=loaded_row))
             loaded_ordinals.append(i)
-            loaded_rows_batch.append(row)
+            loaded_rows_batch.append(loaded_row)
             written += 1
+    db.commit()
+
+    run.state = "loading"
+    dataset.state = "loading"
     db.commit()
 
     # The queryable target: a real, typed table generated from the dataset's
