@@ -17,7 +17,7 @@ from .database import SessionLocal
 from .readers.base import discover_entities, read_rows
 from .readers.xml_tally_masters_reader import looks_like_tally_masters
 from .readers.xml_tally_reader import looks_like_tally
-from .transforms import TransformSpec, apply_transforms
+from .transforms import TransformSpec, build_lookup_index, run_transforms
 from .validation import RuleSpec, run_validation
 
 
@@ -172,39 +172,57 @@ def _execute_run(db: Session, run_id: str) -> None:
     transform_rows = db.query(models.Transform).filter_by(dataset_id=dataset.id).all()
     transform_specs = [TransformSpec(t.id, t.column, t.op, t.args_json) for t in transform_rows]
 
-    rejected = outcome.rejected_ordinals
-    written = 0
-    loaded_ordinals: list[int] = []
-    loaded_rows_batch: list[dict[str, str | None]] = []
+    # lookup transforms need another dataset's already-loaded rows, fetched
+    # once per run rather than per row.
+    lookup_indexes: dict[str, dict[str, dict]] = {}
+    for spec in transform_specs:
+        if spec.op != "lookup":
+            continue
+        source_id = spec.args.get("source_dataset_id")
+        match_column = spec.args.get("source_match_column") or spec.args.get("match_column")
+        if not source_id or not match_column:
+            continue
+        source_rows = [r.data_json for r in db.query(models.LoadedRow).filter_by(dataset_id=source_id).all()]
+        lookup_indexes[spec.id] = build_lookup_index(source_rows, match_column)
+
+    rejected_ordinals = outcome.rejected_ordinals
+    validation_passed = [(i, row) for i, row in enumerate(rows, start=1) if i not in rejected_ordinals]
     for i, row in enumerate(rows, start=1):
-        if i in rejected:
+        if i in rejected_ordinals:
             # Rejects keep the original values -- diagnosing a reject means
-            # seeing what was actually there, not the filled-in version.
+            # seeing what was actually there, not the transformed version.
             db.add(
                 models.RejectedRow(
                     run_id=run.id, row_ordinal=i, reason="advisory rule set to reject_row", data_json=row
                 )
             )
-        else:
-            loaded_row = apply_transforms(row, transform_specs)
-            db.add(models.LoadedRow(dataset_id=dataset.id, run_id=run.id, row_ordinal=i, data_json=loaded_row))
-            loaded_ordinals.append(i)
-            loaded_rows_batch.append(loaded_row)
-            written += 1
+
+    result = run_transforms(validation_passed, transform_specs, dataset.columns_json, lookup_indexes)
+
+    for ordinal, dropped_row, reason in result.dropped:
+        db.add(models.RejectedRow(run_id=run.id, row_ordinal=ordinal, reason=reason, data_json=dropped_row))
+
+    loaded_ordinals = [ordinal for ordinal, _ in result.rows]
+    loaded_rows_batch = [row for _, row in result.rows]
+    for ordinal, row in result.rows:
+        db.add(models.LoadedRow(dataset_id=dataset.id, run_id=run.id, row_ordinal=ordinal, data_json=row))
+    written = len(result.rows)
     db.commit()
 
     run.state = "loading"
     dataset.state = "loading"
     db.commit()
 
-    # The queryable target: a real, typed table generated from the dataset's
-    # pinned schema, not just the loaded_rows JSON dump (ARCHITECTURE.md §4.2).
-    col_map = target_tables.ensure_table(db.connection(), dataset.id, dataset.columns_json)
+    # The queryable target: a real, typed table generated from the run's
+    # output schema (dataset's pinned schema, adjusted for any rename /
+    # derive / cast / sequence / project transform), not just the
+    # loaded_rows JSON dump (ARCHITECTURE.md §4.2).
+    col_map = target_tables.ensure_table(db.connection(), dataset.id, result.columns)
     target_tables.insert_rows(db.connection(), dataset.id, run.id, loaded_rows_batch, loaded_ordinals, col_map)
     db.commit()
 
     run.rows_written = written
-    run.rows_rejected = len(rejected)
+    run.rows_rejected = len(rejected_ordinals) + len(result.dropped)
     run.state = "succeeded"
     run.finished_at = _now()
     dataset.state = "loaded"

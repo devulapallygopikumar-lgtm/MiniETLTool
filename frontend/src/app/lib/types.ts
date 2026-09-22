@@ -56,12 +56,23 @@ export interface ValidationRule {
   on_violation: OnViolation;
 }
 
-export type TransformOp = "fill_default";
+export type TransformOp =
+  | "filter"
+  | "dedupe"
+  | "sort"
+  | "rename"
+  | "lookup"
+  | "derive"
+  | "cast"
+  | "mask"
+  | "fill_default"
+  | "sequence"
+  | "project";
 
 export interface Transform {
   id: string;
   dataset_id: string;
-  column: string;
+  column: string | null;
   op: TransformOp;
   args: Record<string, unknown>;
 }

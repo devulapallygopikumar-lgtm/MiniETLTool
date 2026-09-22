@@ -90,7 +90,19 @@ class RulePatch(BaseModel):
     on_violation: OnViolation | None = None
 
 
-TransformOp = Literal["fill_default"]
+TransformOp = Literal[
+    "filter",
+    "dedupe",
+    "sort",
+    "rename",
+    "lookup",
+    "derive",
+    "cast",
+    "mask",
+    "fill_default",
+    "sequence",
+    "project",
+]
 
 
 class TransformOut(BaseModel):
@@ -98,13 +110,13 @@ class TransformOut(BaseModel):
 
     id: str
     dataset_id: str
-    column: str
+    column: str | None
     op: TransformOp
     args: dict[str, Any]
 
 
 class NewTransform(BaseModel):
-    column: str
+    column: str | None = None
     op: TransformOp
     args: dict[str, Any] = {}
 

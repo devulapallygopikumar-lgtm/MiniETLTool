@@ -77,6 +77,28 @@ def evaluate_row_expression(expr: str, row: dict[str, str | None]) -> bool:
         return False
 
 
+def evaluate_row_value(expr: str, row: dict[str, str | None]) -> str | None:
+    """Evaluates expr as a *value* (for the `derive` transform), not a
+    boolean -- same DSL, same sandboxed namespace as
+    evaluate_row_expression, but the result becomes a new column's value
+    instead of a pass/fail. Any evaluation error yields None, the same
+    conservative default used everywhere else in the pipeline for "this
+    row didn't have what was needed"."""
+    code = _translate(expr)
+    namespace: dict[str, object] = {k: _coerce(v) for k, v in row.items()}
+    namespace["regex_match"] = _regex_match
+    namespace.update(_ALLOWED_NAMES)
+    try:
+        result = eval(code, {"__builtins__": {}}, namespace)  # noqa: S307
+    except Exception:
+        return None
+    if result is None:
+        return None
+    if isinstance(result, float) and result.is_integer():
+        return str(int(result))
+    return str(result)
+
+
 def evaluate_control_total(column: str, op: str, expected: float, values: list[str | None]) -> tuple[bool, float]:
     total = 0.0
     for v in values:

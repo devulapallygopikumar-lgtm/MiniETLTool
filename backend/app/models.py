@@ -82,19 +82,24 @@ class ValidationRule(Base):
 
 
 class Transform(Base):
-    """The Transform stage from ARCHITECTURE.md §7.1's pipeline diagram --
-    unimplemented in the two-day slice until now. Runs on staged rows after
-    the gate opens, before load; validation still sees the original values,
-    so a not_null rule on a column still reports what was actually missing
-    even if a transform later fills it in for the loaded copy."""
+    """The Transform stage from ARCHITECTURE.md §7.1's pipeline diagram /
+    §5.3's operator catalogue. Runs on staged rows after the gate opens,
+    before load; validation still sees the original values, so a not_null
+    rule on a column still reports what was actually missing even if a
+    transform later fills it in for the loaded copy.
+
+    `column` is nullable because not every op targets a single column --
+    filter/sort/dedupe work on the whole row set, keyed via args_json
+    instead (see app/transforms.py's docstring for the full op list and
+    the fixed phase order they run in)."""
 
     __tablename__ = "transforms"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     tenant_id: Mapped[str] = mapped_column(String(64), default=settings.default_tenant_id, index=True)
     dataset_id: Mapped[str] = mapped_column(String(36), ForeignKey("datasets.id"), index=True)
-    column: Mapped[str] = mapped_column(String(255))
-    op: Mapped[str] = mapped_column(String(32))  # fill_default (only op for now)
+    column: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    op: Mapped[str] = mapped_column(String(32))
     args_json: Mapped[dict] = mapped_column(JsonType, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
