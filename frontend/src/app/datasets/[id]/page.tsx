@@ -7,7 +7,7 @@ import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { ValidationPanel } from "@/app/components/ValidationPanel";
 import { RuleEditor } from "@/app/components/RuleEditor";
-import { Alert, Breadcrumb, Button, Card, CardHeader } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardHeader, IconInfo } from "@/app/components/ui";
 import type { Dataset, RunValidation } from "@/app/lib/types";
 
 export default function DatasetPage() {
@@ -106,7 +106,15 @@ export default function DatasetPage() {
                     <tr>
                       <th className="py-1.5 font-medium">Column</th>
                       <th className="py-1.5 font-medium">Type</th>
-                      <th className="py-1.5 font-medium">Nullable</th>
+                      <th className="py-1.5 font-medium">
+                        <span
+                          className="inline-flex cursor-help items-center gap-1"
+                          title="Read-only. Whether at least one sampled value for this column was blank when the file was first uploaded (up to 10,000 rows) — not a live count, and not a constraint. To actually require a column be non-null, add a Mandatory not_null rule in Validation rules above."
+                        >
+                          Has blanks in sample
+                          <IconInfo className="h-3 w-3" />
+                        </span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
