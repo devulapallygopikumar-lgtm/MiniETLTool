@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, createDerivedDataset, listDatasets } from "@/app/lib/api";
+import { GateBadge } from "@/app/components/GateBadge";
+import { StateBadge } from "@/app/components/StateBadge";
 import { Alert, Button, Card, CardHeader, FormField, IconPlus, IconX } from "@/app/components/ui";
 import type { Dataset, DerivedOp } from "@/app/lib/types";
 
@@ -44,7 +47,7 @@ function parseList(value: string): string[] {
 export default function ProcessPage() {
   const router = useRouter();
 
-  const [datasets, setDatasets] = useState<Dataset[] | null>(null);
+  const [allDatasets, setAllDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -78,15 +81,27 @@ export default function ProcessPage() {
   const [leftPrefix, setLeftPrefix] = useState("l_");
   const [rightPrefix, setRightPrefix] = useState("r_");
 
-  useEffect(() => {
+  function refreshDatasets() {
     listDatasets()
-      .then((all) => setDatasets(all.filter((d) => d.row_count !== null)))
+      .then(setAllDatasets)
       .catch((err: unknown) =>
         setError(err instanceof ApiError ? err.message : "Failed to load datasets.")
       );
-  }, []);
+  }
 
-  const finalDatasets = datasets ?? [];
+  useEffect(refreshDatasets, []);
+
+  const finalDatasets = useMemo(
+    () => (allDatasets ?? []).filter((d) => d.row_count !== null),
+    [allDatasets]
+  );
+  const builtEntities = useMemo(
+    () =>
+      (allDatasets ?? [])
+        .filter((d) => d.format === "derived")
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    [allDatasets]
+  );
   const source = useMemo(() => finalDatasets.find((d) => d.id === sourceId) ?? null, [finalDatasets, sourceId]);
   const right = useMemo(() => finalDatasets.find((d) => d.id === rightId) ?? null, [finalDatasets, rightId]);
   const sourceColumns = source?.columns ?? [];
@@ -198,7 +213,7 @@ export default function ProcessPage() {
 
       {error && <Alert>{error}</Alert>}
 
-      {datasets !== null && finalDatasets.length === 0 && !error && (
+      {allDatasets !== null && finalDatasets.length === 0 && !error && (
         <div className="rounded-md border border-dashed border-border bg-surface px-4 py-10 text-center">
           <p className="text-sm text-foreground-muted">
             Nothing to process yet — a dataset must have loaded at least once
@@ -528,6 +543,46 @@ export default function ProcessPage() {
               </Button>
             </div>
           </div>
+        </Card>
+      )}
+
+      {builtEntities.length > 0 && (
+        <Card className="overflow-hidden">
+          <CardHeader title={`${builtEntities.length} built entit${builtEntities.length === 1 ? "y" : "ies"}`} />
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+              <tr>
+                <th className="px-4 py-3 font-medium">Entity</th>
+                <th className="px-4 py-3 font-medium">Operation</th>
+                <th className="px-4 py-3 font-medium">Rows</th>
+                <th className="px-4 py-3 font-medium">State</th>
+                <th className="px-4 py-3 font-medium">Gate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {builtEntities.map((d) => {
+                const opValue = d.source_filename.split(" of ")[0];
+                const opLabel = OPS.find((o) => o.value === opValue)?.label ?? opValue;
+                return (
+                  <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-soft">
+                    <td className="px-4 py-3">
+                      <Link href={`/datasets/${d.id}`} className="font-medium text-foreground hover:text-primary">
+                        {d.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-foreground-muted">{opLabel}</td>
+                    <td className="px-4 py-3 text-foreground-muted">{d.row_count ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <StateBadge state={d.state} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <GateBadge state={d.gate_state} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </Card>
       )}
     </div>
