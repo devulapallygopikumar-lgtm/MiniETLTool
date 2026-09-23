@@ -143,6 +143,19 @@ export interface NewDerivedDataset {
   args: Record<string, unknown>;
 }
 
+export interface ResetSummary {
+  datasets: number;
+  mappings: number;
+  rules: number;
+  transforms: number;
+  runs: number;
+  staging_rows: number;
+  rejected_rows: number;
+  validation_results: number;
+  validation_issues: number;
+  loaded_rows: number;
+}
+
 export interface AuditEvent {
   id: string;
   occurred_at: string;

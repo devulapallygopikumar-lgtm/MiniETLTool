@@ -6,6 +6,7 @@ import type {
   AuditEvent,
   Dataset,
   NewDerivedDataset,
+  ResetSummary,
   Run,
   RunValidation,
   Transform,
@@ -192,6 +193,12 @@ export function createDerivedDataset(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+// ---- Admin ----
+
+export function resetEverything(): Promise<ResetSummary> {
+  return request("/api/v1/admin/reset", { method: "POST" });
 }
 
 // ---- Audit ----

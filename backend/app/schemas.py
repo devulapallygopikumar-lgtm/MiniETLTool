@@ -181,6 +181,19 @@ class NewDerivedDataset(BaseModel):
     args: dict[str, Any] = {}
 
 
+class ResetSummary(BaseModel):
+    datasets: int
+    mappings: int
+    rules: int
+    transforms: int
+    runs: int
+    staging_rows: int
+    rejected_rows: int
+    validation_results: int
+    validation_issues: int
+    loaded_rows: int
+
+
 class AuditEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

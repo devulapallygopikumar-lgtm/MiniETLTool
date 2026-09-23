@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError, listDatasets } from "@/app/lib/api";
+import { ApiError, listDatasets, resetEverything } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { Alert, Button, Card, CardHeader, IconUpload } from "@/app/components/ui";
@@ -11,23 +11,37 @@ import type { Dataset } from "@/app/lib/types";
 export default function DatasetsPage() {
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingReset, setConfirmingReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  function refresh() {
     listDatasets()
-      .then((data) => {
-        if (!cancelled) setDatasets(data);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setError(
-          err instanceof ApiError ? err.message : "Failed to load datasets."
-        );
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+      .then(setDatasets)
+      .catch((err: unknown) =>
+        setError(err instanceof ApiError ? err.message : "Failed to load datasets.")
+      );
+  }
+
+  useEffect(refresh, []);
+
+  async function confirmReset() {
+    setResetting(true);
+    setError(null);
+    try {
+      const summary = await resetEverything();
+      setResetMessage(
+        `Reset complete: ${summary.datasets} dataset(s), ${summary.runs} run(s), ` +
+          `${summary.loaded_rows} loaded row(s) deleted.`
+      );
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to reset.");
+    } finally {
+      setResetting(false);
+      setConfirmingReset(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -119,6 +133,49 @@ export default function DatasetsPage() {
           </table>
         </Card>
       )}
+
+      {resetMessage && <Alert variant="success">{resetMessage}</Alert>}
+
+      <Card>
+        <CardHeader title="Danger zone" />
+        <div className="flex flex-col gap-3 p-4">
+          <p className="text-xs text-foreground-muted">
+            Permanently delete every dataset, mapping, rule, transform and
+            run — all staged, rejected and loaded rows, and every typed
+            table they produced. The audit log is kept. This cannot be
+            undone.
+          </p>
+          {!confirmingReset && (
+            <Button
+              variant="danger"
+              size="sm"
+              className="self-start"
+              onClick={() => setConfirmingReset(true)}
+            >
+              Reset all data
+            </Button>
+          )}
+          {confirmingReset && (
+            <div className="flex items-center gap-3 rounded-md border border-danger/30 bg-danger/5 px-3 py-2">
+              <span className="text-sm font-medium">
+                Are you sure? This deletes{" "}
+                {datasets?.length ?? 0} dataset{datasets?.length === 1 ? "" : "s"} and all run history.
+              </span>
+              <Button variant="danger" size="sm" disabled={resetting} onClick={confirmReset}>
+                {resetting ? "Resetting…" : "Yes, reset everything"}
+              </Button>
+              <Button
+                variant="white"
+                size="sm"
+                disabled={resetting}
+                onClick={() => setConfirmingReset(false)}
+              >
+                No, cancel
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
