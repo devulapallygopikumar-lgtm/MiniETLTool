@@ -26,6 +26,11 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
 
     columns_json = infer_schema(rows[:50], columns)
 
+    existing_tables = {t for (t,) in db.query(models.Mapping.target_table).all()}
+    table_name = target_tables.unique_table_name(
+        target_tables.slugify_identifier(body.name), existing_tables
+    )
+
     dataset = models.Dataset(
         name=body.name,
         source_filename=f"{body.op} of {body.source_dataset_id}",
@@ -47,7 +52,7 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
         source_format="derived",
         entity_spec_json=spec,
         schema_json=columns_json,
-        target_table=target_tables.physical_table_name(dataset.id),
+        target_table=table_name,
     )
     db.add(mapping)
 

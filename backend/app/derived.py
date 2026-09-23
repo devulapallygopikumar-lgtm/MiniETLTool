@@ -42,7 +42,7 @@ def _col_map(dataset: models.Dataset) -> dict[str, str]:
 
 
 def _table(dataset: models.Dataset) -> str:
-    return target_tables.physical_table_name(dataset.id)
+    return dataset.mapping.target_table
 
 
 def _q(ident: str) -> str:

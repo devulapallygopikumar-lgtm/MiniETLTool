@@ -223,8 +223,8 @@ def _execute_run(db: Session, run_id: str) -> None:
     # output schema (dataset's pinned schema, adjusted for any rename /
     # derive / cast / sequence / project transform), not just the
     # loaded_rows JSON dump (ARCHITECTURE.md §4.2).
-    col_map = target_tables.ensure_table(db.connection(), dataset.id, result.columns)
-    target_tables.insert_rows(db.connection(), dataset.id, run.id, loaded_rows_batch, loaded_ordinals, col_map)
+    col_map = target_tables.ensure_table(db.connection(), mapping.target_table, result.columns)
+    target_tables.insert_rows(db.connection(), mapping.target_table, run.id, loaded_rows_batch, loaded_ordinals, col_map)
     db.commit()
 
     run.rows_written = written

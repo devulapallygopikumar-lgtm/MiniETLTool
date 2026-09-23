@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Session
 
-from .. import audit, models, schemas, target_tables
+from .. import audit, models, schemas
 from ..database import get_db
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -17,13 +17,12 @@ def reset_everything(db: Session = Depends(get_db)):
     """Deletes every dataset, mapping, rule, transform and run (and every
     row/table they produced), back to an empty system. The audit log is
     append-only and is left untouched, aside from the event this logs."""
-    dataset_ids = [d.id for d in db.query(models.Dataset.id).all()]
-    for dataset_id in dataset_ids:
-        table = target_tables.physical_table_name(dataset_id)
+    dataset_count = db.query(models.Dataset).count()
+    for (table,) in db.query(models.Mapping.target_table).all():
         db.execute(sa_text(f'DROP TABLE IF EXISTS "{table}"'))
 
     summary = schemas.ResetSummary(
-        datasets=len(dataset_ids),
+        datasets=dataset_count,
         mappings=db.query(models.Mapping).count(),
         rules=db.query(models.ValidationRule).count(),
         transforms=db.query(models.Transform).count(),

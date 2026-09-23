@@ -34,8 +34,36 @@ _PG_TYPES = {
 _RESERVED_COLUMNS = {"id", "run_id", "row_ordinal", "loaded_at"}
 
 
+_MAX_TABLE_NAME = 63
+
+
 def physical_table_name(dataset_id: str) -> str:
     return "dataset_" + dataset_id.replace("-", "_")
+
+
+def slugify_identifier(name: str, fallback: str = "entity") -> str:
+    """A Postgres-safe table name built from arbitrary user text -- used for
+    a "processed into a new entity" dataset's table (routers/process.py),
+    where the user names the table themselves instead of it being derived
+    from the dataset id."""
+    slug = re.sub(r"[^a-zA-Z0-9_]", "_", name.strip().lower())
+    slug = re.sub(r"_+", "_", slug).strip("_")
+    if not slug:
+        slug = fallback
+    if slug[0].isdigit():
+        slug = f"t_{slug}"
+    return slug[:_MAX_TABLE_NAME]
+
+
+def unique_table_name(base: str, existing: set[str]) -> str:
+    if base not in existing:
+        return base
+    i = 2
+    while True:
+        candidate = f"{base}_{i}"[:_MAX_TABLE_NAME]
+        if candidate not in existing:
+            return candidate
+        i += 1
 
 
 def _slug_column(name: str, used: set[str]) -> str:
@@ -58,8 +86,7 @@ def build_column_map(columns: list[dict]) -> list[tuple[str, str, str]]:
     return [(c["name"], _slug_column(c["name"], used), c["type"]) for c in columns]
 
 
-def ensure_table(conn: Connection, dataset_id: str, columns: list[dict]) -> list[tuple[str, str, str]]:
-    table_name = physical_table_name(dataset_id)
+def ensure_table(conn: Connection, table_name: str, columns: list[dict]) -> list[tuple[str, str, str]]:
     col_map = build_column_map(columns)
     cols_sql = ",\n  ".join(f'"{phys}" {_PG_TYPES.get(type_key, "TEXT")}' for _, phys, type_key in col_map)
     conn.execute(
@@ -98,7 +125,7 @@ def _cast_value(value: str | None, type_key: str) -> object:
 
 def insert_rows(
     conn: Connection,
-    dataset_id: str,
+    table_name: str,
     run_id: str,
     rows: list[dict[str, str | None]],
     row_ordinals: list[int],
@@ -106,7 +133,6 @@ def insert_rows(
 ) -> None:
     if not rows:
         return
-    table_name = physical_table_name(dataset_id)
     phys_cols = [phys for _, phys, _ in col_map]
     col_list = ", ".join(f'"{phys}"' for phys in phys_cols)
     placeholders = ", ".join(f":{phys}" for phys in phys_cols)
