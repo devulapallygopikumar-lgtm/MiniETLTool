@@ -7,7 +7,8 @@ export type SourceFormat =
   | "excel"
   | "xml"
   | "xml-tally"
-  | "xml-tally-masters";
+  | "xml-tally-masters"
+  | "derived";
 
 export type DatasetState =
   | "discovered"
@@ -124,6 +125,22 @@ export interface ValidationIssueRow {
   column_name: string | null;
   offending_value: string | null;
   message: string;
+}
+
+export type DerivedOp =
+  | "sort"
+  | "dedupe"
+  | "group_by"
+  | "window"
+  | "pivot"
+  | "unpivot"
+  | "join";
+
+export interface NewDerivedDataset {
+  name: string;
+  op: DerivedOp;
+  source_dataset_id: string;
+  args: Record<string, unknown>;
 }
 
 export interface AuditEvent {

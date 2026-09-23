@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .routers import audit_events, datasets, rules, runs, transforms, uploads
+from .routers import audit_events, datasets, process, rules, runs, transforms, uploads
 
 app = FastAPI(title="Mini ETL API")
 
@@ -19,6 +19,7 @@ app.include_router(rules.router)
 app.include_router(transforms.router)
 app.include_router(runs.router)
 app.include_router(audit_events.router)
+app.include_router(process.router)
 
 
 @app.get("/health")

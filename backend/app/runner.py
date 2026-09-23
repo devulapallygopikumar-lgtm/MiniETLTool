@@ -11,7 +11,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from . import audit, models, target_tables
+from . import audit, derived, models, target_tables
 from .config import settings
 from .database import SessionLocal
 from .readers.base import discover_entities, read_rows
@@ -101,7 +101,13 @@ def _execute_run(db: Session, run_id: str) -> None:
     db.commit()
 
     try:
-        rows = list(read_rows(Path(mapping.source_path), mapping.source_format, mapping.entity_spec_json))
+        if mapping.source_format == "derived":
+            # A processed entity (sort/group-by/join/dedupe/window/pivot):
+            # no file to read, re-run the operator's SQL against the source
+            # dataset(s)' typed tables instead (see app/derived.py).
+            rows = derived.execute_rows(db, mapping.entity_spec_json)
+        else:
+            rows = list(read_rows(Path(mapping.source_path), mapping.source_format, mapping.entity_spec_json))
     except Exception as exc:  # noqa: BLE001 - surfaced to the user as run.error
         run.state = "failed"
         run.error = str(exc)

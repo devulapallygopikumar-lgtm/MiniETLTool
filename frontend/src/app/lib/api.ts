@@ -5,6 +5,7 @@
 import type {
   AuditEvent,
   Dataset,
+  NewDerivedDataset,
   Run,
   RunValidation,
   Transform,
@@ -180,6 +181,17 @@ export function getRunValidationRows(
 
 export function getRunRejectsUrl(runId: string): string {
   return `${API_BASE}/api/v1/runs/${runId}/rejects`;
+}
+
+// ---- Process (derived datasets) ----
+
+export function createDerivedDataset(
+  body: NewDerivedDataset
+): Promise<Dataset> {
+  return request("/api/v1/process", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 // ---- Audit ----

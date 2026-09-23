@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/", label: "Datasets" },
   { href: "/upload", label: "Upload" },
   { href: "/final", label: "Final Datasets" },
+  { href: "/process", label: "Process Data" },
   { href: "/audit", label: "Audit" },
 ];
 

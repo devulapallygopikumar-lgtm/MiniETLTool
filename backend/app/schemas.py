@@ -5,7 +5,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-SourceFormat = Literal["csv", "excel", "xml", "xml-tally", "xml-tally-masters"]
+SourceFormat = Literal["csv", "excel", "xml", "xml-tally", "xml-tally-masters", "derived"]
 DatasetState = Literal[
     "discovered",
     "validating",
@@ -169,6 +169,16 @@ class ValidationIssueRowOut(BaseModel):
     column_name: str | None
     offending_value: str | None
     message: str
+
+
+DerivedOp = Literal["sort", "dedupe", "group_by", "window", "pivot", "unpivot", "join"]
+
+
+class NewDerivedDataset(BaseModel):
+    name: str
+    op: DerivedOp
+    source_dataset_id: str
+    args: dict[str, Any] = {}
 
 
 class AuditEventOut(BaseModel):

@@ -3,7 +3,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import derived, models, schemas
 from ..database import get_db
 from ..readers.base import read_rows
 
@@ -74,6 +74,8 @@ def preview_dataset(
     if mapping is None:
         raise HTTPException(409, "Dataset has no mapping")
     try:
+        if mapping.source_format == "derived":
+            return derived.execute_rows(db, mapping.entity_spec_json)[:limit]
         generator = read_rows(Path(mapping.source_path), mapping.source_format, mapping.entity_spec_json)
         return _capped(generator, limit)
     except Exception as exc:  # noqa: BLE001 - surfaced as a readable preview error
