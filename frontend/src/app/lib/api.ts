@@ -4,7 +4,10 @@
 
 import type {
   AuditEvent,
+  Connection,
+  ConnectionTestResult,
   Dataset,
+  NewConnection,
   NewDerivedDataset,
   ResetSummary,
   Run,
@@ -192,6 +195,41 @@ export function createDerivedDataset(
   return request("/api/v1/process", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+// ---- Connections (Target Dataset) ----
+
+export function listConnections(): Promise<Connection[]> {
+  return request("/api/v1/connections");
+}
+
+export function createConnection(body: NewConnection): Promise<Connection> {
+  return request("/api/v1/connections", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateConnection(
+  connectionId: string,
+  patch: Partial<NewConnection>
+): Promise<Connection> {
+  return request(`/api/v1/connections/${connectionId}`, {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteConnection(connectionId: string): Promise<void> {
+  return request(`/api/v1/connections/${connectionId}`, { method: "DELETE" });
+}
+
+export function testConnection(
+  connectionId: string
+): Promise<ConnectionTestResult> {
+  return request(`/api/v1/connections/${connectionId}/test`, {
+    method: "POST",
   });
 }
 

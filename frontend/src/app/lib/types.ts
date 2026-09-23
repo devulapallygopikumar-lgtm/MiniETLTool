@@ -156,6 +156,39 @@ export interface ResetSummary {
   loaded_rows: number;
 }
 
+export type ConnectionKind = "postgres" | "mysql" | "sqlserver";
+
+export interface Connection {
+  id: string;
+  name: string;
+  kind: ConnectionKind;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  schema_name: string | null;
+  created_at: string;
+  last_tested_at: string | null;
+  last_test_ok: boolean | null;
+  last_test_error: string | null;
+}
+
+export interface NewConnection {
+  name: string;
+  kind: ConnectionKind;
+  host: string;
+  port: number;
+  database: string;
+  username: string;
+  password: string;
+  schema_name?: string | null;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  message: string;
+}
+
 export interface AuditEvent {
   id: string;
   occurred_at: string;

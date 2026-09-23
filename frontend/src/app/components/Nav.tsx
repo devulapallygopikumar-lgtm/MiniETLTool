@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/upload", label: "Upload" },
   { href: "/final", label: "Final Datasets" },
   { href: "/process", label: "Process Data" },
+  { href: "/target", label: "Target Dataset" },
   { href: "/audit", label: "Audit" },
 ];
 

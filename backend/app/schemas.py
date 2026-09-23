@@ -194,6 +194,54 @@ class ResetSummary(BaseModel):
     loaded_rows: int
 
 
+ConnectionKind = Literal["postgres", "mysql", "sqlserver"]
+
+
+class ConnectionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    kind: ConnectionKind
+    host: str
+    port: int
+    database: str
+    username: str
+    schema_name: str | None
+    created_at: datetime
+    last_tested_at: datetime | None
+    last_test_ok: bool | None
+    last_test_error: str | None
+    # password intentionally omitted -- write-only, never echoed back
+
+
+class NewConnection(BaseModel):
+    name: str
+    kind: ConnectionKind
+    host: str
+    port: int
+    database: str
+    username: str
+    password: str
+    schema_name: str | None = None
+
+
+class ConnectionPatch(BaseModel):
+    name: str | None = None
+    kind: ConnectionKind | None = None
+    host: str | None = None
+    port: int | None = None
+    database: str | None = None
+    username: str | None = None
+    password: str | None = None  # blank/omitted leaves the stored password unchanged
+    schema_name: str | None = None
+
+
+class ConnectionTestResult(BaseModel):
+    ok: bool
+    message: str
+
+
 class AuditEventOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

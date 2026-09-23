@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -211,3 +211,27 @@ class AuditEvent(Base):
     resource_id: Mapped[str] = mapped_column(String(36))
     outcome: Mapped[str] = mapped_column(String(16), default="success")
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class Connection(Base):
+    """A saved RDBMS connection (ARCHITECTURE.md §12.1's `connections` table,
+    scoped down for this slice: a registry only, no discovery/schema/write
+    path wired to it yet, and the password is stored plain -- this slice
+    has no auth or secrets manager, so that matches everything else here."""
+
+    __tablename__ = "connections"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(64), default=settings.default_tenant_id, index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    kind: Mapped[str] = mapped_column(String(32))  # postgres | mysql | sqlserver
+    host: Mapped[str] = mapped_column(String(255))
+    port: Mapped[int] = mapped_column(Integer)
+    database: Mapped[str] = mapped_column(String(255))
+    username: Mapped[str] = mapped_column(String(255))
+    password: Mapped[str] = mapped_column(String(255))
+    schema_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    last_test_error: Mapped[str | None] = mapped_column(Text, nullable=True)
