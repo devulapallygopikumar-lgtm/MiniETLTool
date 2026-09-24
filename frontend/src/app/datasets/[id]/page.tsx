@@ -48,7 +48,7 @@ export default function DatasetPage() {
     setPreviewLoading(true);
     setPreviewError(null);
     try {
-      setPreview(await previewDataset(id, 25));
+      setPreview(await previewDataset(id, 200));
     } catch (err) {
       setPreviewError(err instanceof ApiError ? err.message : "Failed to load preview.");
     } finally {
@@ -123,7 +123,7 @@ export default function DatasetPage() {
             <div className="p-4">
               <p className="mb-3 text-xs text-foreground-muted">
                 Read fresh from the source file, exactly as parsed — no
-                rules or transforms applied. First 25 rows only.
+                rules or transforms applied. First 200 rows only.
               </p>
               {previewError && <Alert>{previewError}</Alert>}
               {!previewError && preview && (
