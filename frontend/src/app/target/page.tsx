@@ -9,7 +9,7 @@ import {
   testConnection,
   updateConnection,
 } from "@/app/lib/api";
-import { Alert, Button, Card, CardHeader, FormField, IconPlus } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, CollapsibleCard, FormField, IconPlus } from "@/app/components/ui";
 import type { Connection, ConnectionKind, NewConnection } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -279,10 +279,9 @@ export default function TargetDatasetPage() {
       )}
 
       {connections !== null && connections.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader title={`${connections.length} connection${connections.length === 1 ? "" : "s"}`} />
+        <CollapsibleCard title={`${connections.length} connection${connections.length === 1 ? "" : "s"}`}>
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+            <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">Name</th>
                 <th className="px-4 py-3 font-medium">Kind</th>
@@ -341,7 +340,7 @@ export default function TargetDatasetPage() {
               })}
             </tbody>
           </table>
-        </Card>
+        </CollapsibleCard>
       )}
     </div>
   );

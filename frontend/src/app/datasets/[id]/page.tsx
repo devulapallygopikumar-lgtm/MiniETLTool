@@ -10,7 +10,7 @@ import { RuleEditor } from "@/app/components/RuleEditor";
 import { TransformEditor } from "@/app/components/TransformEditor";
 import { RunHistory } from "@/app/components/RunHistory";
 import { DataGrid } from "@/app/components/DataGrid";
-import { Alert, Breadcrumb, Button, Card, CardHeader, IconInfo } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconInfo } from "@/app/components/ui";
 import type { Dataset, RunValidation } from "@/app/lib/types";
 
 export default function DatasetPage() {
@@ -24,6 +24,7 @@ export default function DatasetPage() {
   const [preview, setPreview] = useState<Record<string, unknown>[] | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [schemaCollapsed, setSchemaCollapsed] = useState(false);
 
   function refresh() {
     getDataset(id)
@@ -139,42 +140,53 @@ export default function DatasetPage() {
           <TransformEditor datasetId={dataset.id} columns={dataset.columns} />
 
           <Card>
-            <CardHeader title="Pinned schema" />
+            <CardHeader
+              title={`Pinned schema (${dataset.columns.length})`}
+              actions={
+                dataset.columns.length > 0 && (
+                  <Button variant="white" size="sm" iconOnly onClick={() => setSchemaCollapsed((c) => !c)}>
+                    <IconChevronRight className={`h-3.5 w-3.5 transition-transform ${schemaCollapsed ? "" : "rotate-90"}`} />
+                  </Button>
+                )
+              }
+            />
             <div className="p-4">
               {dataset.columns.length === 0 ? (
                 <p className="text-xs text-foreground-muted">
                   No schema inferred yet.
                 </p>
-              ) : (
-                <table className="w-full text-left text-sm">
-                  <thead className="text-xs uppercase tracking-wide text-foreground-muted">
-                    <tr>
-                      <th className="py-1.5 font-medium">Column</th>
-                      <th className="py-1.5 font-medium">Type</th>
-                      <th className="py-1.5 font-medium">
-                        <span
-                          className="inline-flex cursor-help items-center gap-1"
-                          title="Read-only. Whether at least one sampled value for this column was blank when the file was first uploaded (up to 10,000 rows) — not a live count, and not a constraint. To actually require a column be non-null, add a Mandatory not_null rule in Validation rules above."
-                        >
-                          Has blanks in sample
-                          <IconInfo className="h-3 w-3" />
-                        </span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dataset.columns.map((c) => (
-                      <tr key={c.name} className="border-t border-border">
-                        <td className="py-1.5 font-mono text-xs">{c.name}</td>
-                        <td className="py-1.5 text-foreground-muted">{c.type}</td>
-                        <td className="py-1.5 text-foreground-muted">
-                          {c.nullable ? "yes" : "no"}
-                        </td>
+              ) : !schemaCollapsed ? (
+                <div className="max-w-full overflow-auto rounded-md border-2 border-border" style={{ maxHeight: "50vh" }}>
+                  <table className="w-full text-left text-sm">
+                    <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+                      <tr>
+                        <th className="px-3 py-1.5 font-medium">Column</th>
+                        <th className="px-3 py-1.5 font-medium">Type</th>
+                        <th className="px-3 py-1.5 font-medium">
+                          <span
+                            className="inline-flex cursor-help items-center gap-1"
+                            title="Read-only. Whether at least one sampled value for this column was blank when the file was first uploaded (up to 10,000 rows) — not a live count, and not a constraint. To actually require a column be non-null, add a Mandatory not_null rule in Validation rules above."
+                          >
+                            Has blanks in sample
+                            <IconInfo className="h-3 w-3" />
+                          </span>
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody>
+                      {dataset.columns.map((c) => (
+                        <tr key={c.name} className="border-b border-border last:border-0">
+                          <td className="px-3 py-1.5 font-mono text-xs">{c.name}</td>
+                          <td className="px-3 py-1.5 text-foreground-muted">{c.type}</td>
+                          <td className="px-3 py-1.5 text-foreground-muted">
+                            {c.nullable ? "yes" : "no"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
             </div>
           </Card>
 

@@ -128,12 +128,15 @@ export function DataGrid({
       </div>
 
       {!collapsed && (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="max-w-full overflow-auto rounded-md border-2 border-border" style={{ maxHeight: "60vh" }}>
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+            <thead className="sticky top-0 z-10 bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
                 {cols.map((c) => (
-                  <th key={c} className="whitespace-nowrap px-3 py-2 font-medium">
+                  <th
+                    key={c}
+                    className="whitespace-nowrap border-b-2 border-r border-border px-3 py-2 font-medium last:border-r-0"
+                  >
                     {c}
                   </th>
                 ))}
@@ -143,7 +146,10 @@ export function DataGrid({
               {rows.map((row, i) => (
                 <tr key={i} className="border-b border-border last:border-0 hover:bg-surface-soft">
                   {cols.map((c) => (
-                    <td key={c} className="whitespace-nowrap px-3 py-1.5 text-foreground-muted">
+                    <td
+                      key={c}
+                      className="whitespace-nowrap border-r border-border px-3 py-1.5 text-foreground-muted last:border-r-0"
+                    >
                       {cellText(row[c]) || <span className="text-border">—</span>}
                     </td>
                   ))}

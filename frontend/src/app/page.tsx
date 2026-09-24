@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ApiError, deleteDataset, listDatasets, resetEverything } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Button, Card, CardHeader, IconUpload } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, CollapsibleCard, IconUpload } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function DatasetsPage() {
@@ -98,12 +98,9 @@ export default function DatasetsPage() {
       )}
 
       {datasets !== null && datasets.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader
-            title={`${datasets.length} dataset${datasets.length === 1 ? "" : "s"}`}
-          />
+        <CollapsibleCard title={`${datasets.length} dataset${datasets.length === 1 ? "" : "s"}`}>
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+            <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">Dataset</th>
                 <th className="px-4 py-3 font-medium">Source</th>
@@ -181,7 +178,7 @@ export default function DatasetsPage() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </CollapsibleCard>
       )}
 
       {resetMessage && <Alert variant="success">{resetMessage}</Alert>}

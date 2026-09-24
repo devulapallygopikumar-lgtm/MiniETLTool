@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, listAuditEvents } from "@/app/lib/api";
-import { Alert, Card } from "@/app/components/ui";
+import { Alert, CollapsibleCard } from "@/app/components/ui";
 import type { AuditEvent } from "@/app/lib/types";
 
 export default function AuditPage() {
@@ -37,9 +37,9 @@ export default function AuditPage() {
       )}
 
       {events !== null && events.length > 0 && (
-        <Card className="overflow-hidden">
+        <CollapsibleCard title={`${events.length} audit event${events.length === 1 ? "" : "s"}`}>
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+            <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">Time</th>
                 <th className="px-4 py-3 font-medium">Actor</th>
@@ -83,7 +83,7 @@ export default function AuditPage() {
               ))}
             </tbody>
           </table>
-        </Card>
+        </CollapsibleCard>
       )}
     </div>
   );

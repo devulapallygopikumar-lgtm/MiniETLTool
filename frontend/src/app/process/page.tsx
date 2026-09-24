@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, createDerivedDataset, listDatasets } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Button, Card, CardHeader, FormField, IconPlus, IconX } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, CollapsibleCard, FormField, IconPlus, IconX } from "@/app/components/ui";
 import type { Dataset, DerivedOp } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -547,10 +547,9 @@ export default function ProcessPage() {
       )}
 
       {builtEntities.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader title={`${builtEntities.length} built entit${builtEntities.length === 1 ? "y" : "ies"}`} />
+        <CollapsibleCard title={`${builtEntities.length} built entit${builtEntities.length === 1 ? "y" : "ies"}`}>
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+            <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">Entity</th>
                 <th className="px-4 py-3 font-medium">Operation</th>
@@ -583,7 +582,7 @@ export default function ProcessPage() {
               })}
             </tbody>
           </table>
-        </Card>
+        </CollapsibleCard>
       )}
     </div>
   );

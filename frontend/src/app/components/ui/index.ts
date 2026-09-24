@@ -1,5 +1,6 @@
 export { Button } from "./Button";
 export { Card, CardHeader, CardBody } from "./Card";
+export { CollapsibleCard } from "./CollapsibleCard";
 export { Alert } from "./Alert";
 export { SectionTitle } from "./SectionTitle";
 export { FormField } from "./FormField";

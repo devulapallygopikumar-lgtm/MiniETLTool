@@ -11,7 +11,7 @@ import {
 } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Breadcrumb, Button, Card, CardHeader, IconX } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconX } from "@/app/components/ui";
 import type { Run, RunValidation, ValidationIssueRow } from "@/app/lib/types";
 
 const TERMINAL_STATES = new Set([
@@ -31,6 +31,7 @@ export default function RunPage() {
   const [selectedRule, setSelectedRule] = useState<string | null>(null);
   const [rows, setRows] = useState<ValidationIssueRow[] | null>(null);
   const [rowsError, setRowsError] = useState<string | null>(null);
+  const [resultsCollapsed, setResultsCollapsed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,77 +157,86 @@ export default function RunPage() {
                 </span>
               </>
             }
+            actions={
+              <Button variant="white" size="sm" iconOnly onClick={() => setResultsCollapsed((c) => !c)}>
+                <IconChevronRight className={`h-3.5 w-3.5 transition-transform ${resultsCollapsed ? "" : "rotate-90"}`} />
+              </Button>
+            }
           />
-          <div className="p-4 pt-0">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border text-xs uppercase tracking-wide text-foreground-muted">
-                <tr>
-                  <th className="py-2 font-medium">Rule</th>
-                  <th className="py-2 font-medium">Scope</th>
-                  <th className="py-2 font-medium">Enforcement</th>
-                  <th className="py-2 font-medium">Violations</th>
-                  <th className="py-2 font-medium">Pass rate</th>
-                  <th className="py-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...validation.results]
-                  .sort((a, b) => {
-                    const aBlock = a.enforcement === "mandatory" && a.violations > 0;
-                    const bBlock = b.enforcement === "mandatory" && b.violations > 0;
-                    if (aBlock !== bBlock) return aBlock ? -1 : 1;
-                    return b.violations - a.violations;
-                  })
-                  .map((r) => (
-                    <tr key={r.rule_id} className="border-b border-border last:border-0">
-                      <td className="py-2">
-                        {r.rule}
-                        {r.column && (
-                          <span className="text-foreground-muted"> · {r.column}</span>
-                        )}
-                      </td>
-                      <td className="py-2 text-foreground-muted">{r.scope}</td>
-                      <td className="py-2 text-foreground-muted capitalize">
-                        {r.enforcement.replace("_", " ")}
-                      </td>
-                      <td
-                        className={`py-2 font-semibold ${
-                          r.violations > 0
-                            ? r.enforcement === "mandatory"
-                              ? "text-danger"
-                              : "text-warning"
-                            : "text-success"
-                        }`}
-                      >
-                        {r.violations}
-                      </td>
-                      <td className="py-2 text-foreground-muted">
-                        {(r.pass_rate * 100).toFixed(1)}%
-                      </td>
-                      <td className="py-2">
-                        {r.violations > 0 && (
-                          <Button
-                            variant="white"
-                            size="sm"
-                            className="border-0 !px-0 !py-0 text-primary hover:bg-transparent hover:text-primary-dark"
-                            onClick={() => selectRule(r.rule_id)}
-                          >
-                            View sample
-                          </Button>
-                        )}
-                      </td>
+          {!resultsCollapsed && (
+            <div className="p-4 pt-0">
+              <div className="max-w-full overflow-auto rounded-md border-2 border-border" style={{ maxHeight: "50vh" }}>
+                <table className="w-full text-left text-sm">
+                  <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Rule</th>
+                      <th className="px-3 py-2 font-medium">Scope</th>
+                      <th className="px-3 py-2 font-medium">Enforcement</th>
+                      <th className="px-3 py-2 font-medium">Violations</th>
+                      <th className="px-3 py-2 font-medium">Pass rate</th>
+                      <th className="px-3 py-2 font-medium"></th>
                     </tr>
-                  ))}
-                {failingRules.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-center text-foreground-muted">
-                      No violations.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody>
+                    {[...validation.results]
+                      .sort((a, b) => {
+                        const aBlock = a.enforcement === "mandatory" && a.violations > 0;
+                        const bBlock = b.enforcement === "mandatory" && b.violations > 0;
+                        if (aBlock !== bBlock) return aBlock ? -1 : 1;
+                        return b.violations - a.violations;
+                      })
+                      .map((r) => (
+                        <tr key={r.rule_id} className="border-b border-border last:border-0">
+                          <td className="px-3 py-2">
+                            {r.rule}
+                            {r.column && (
+                              <span className="text-foreground-muted"> · {r.column}</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-foreground-muted">{r.scope}</td>
+                          <td className="px-3 py-2 text-foreground-muted capitalize">
+                            {r.enforcement.replace("_", " ")}
+                          </td>
+                          <td
+                            className={`px-3 py-2 font-semibold ${
+                              r.violations > 0
+                                ? r.enforcement === "mandatory"
+                                  ? "text-danger"
+                                  : "text-warning"
+                                : "text-success"
+                            }`}
+                          >
+                            {r.violations}
+                          </td>
+                          <td className="px-3 py-2 text-foreground-muted">
+                            {(r.pass_rate * 100).toFixed(1)}%
+                          </td>
+                          <td className="px-3 py-2">
+                            {r.violations > 0 && (
+                              <Button
+                                variant="white"
+                                size="sm"
+                                className="border-0 !px-0 !py-0 text-primary hover:bg-transparent hover:text-primary-dark"
+                                onClick={() => selectRule(r.rule_id)}
+                              >
+                                View sample
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    {failingRules.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-4 text-center text-foreground-muted">
+                          No violations.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </Card>
       )}
 
@@ -249,32 +259,34 @@ export default function RunPage() {
               <p className="text-xs text-foreground-muted">No sample rows returned.</p>
             )}
             {rows && rows.length > 0 && (
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-border text-xs uppercase tracking-wide text-foreground-muted">
-                  <tr>
-                    <th className="py-1.5 font-medium">Row</th>
-                    <th className="py-1.5 font-medium">Column</th>
-                    <th className="py-1.5 font-medium">Value</th>
-                    <th className="py-1.5 font-medium">Message</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row, i) => (
-                    <tr key={i} className="border-b border-border last:border-0">
-                      <td className="py-1.5 font-mono text-xs">{row.row_ordinal}</td>
-                      <td className="py-1.5 text-foreground-muted">
-                        {row.column_name ?? "—"}
-                      </td>
-                      <td className="py-1.5">
-                        <code className="rounded bg-danger-soft px-1.5 py-0.5 text-xs text-danger">
-                          {row.offending_value ?? "null"}
-                        </code>
-                      </td>
-                      <td className="py-1.5 text-foreground-muted">{row.message}</td>
+              <div className="max-w-full overflow-auto rounded-md border-2 border-border" style={{ maxHeight: "50vh" }}>
+                <table className="w-full text-left text-sm">
+                  <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
+                    <tr>
+                      <th className="px-3 py-1.5 font-medium">Row</th>
+                      <th className="px-3 py-1.5 font-medium">Column</th>
+                      <th className="px-3 py-1.5 font-medium">Value</th>
+                      <th className="px-3 py-1.5 font-medium">Message</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, i) => (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-3 py-1.5 font-mono text-xs">{row.row_ordinal}</td>
+                        <td className="px-3 py-1.5 text-foreground-muted">
+                          {row.column_name ?? "—"}
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <code className="rounded bg-danger-soft px-1.5 py-0.5 text-xs text-danger">
+                            {row.offending_value ?? "null"}
+                          </code>
+                        </td>
+                        <td className="px-3 py-1.5 text-foreground-muted">{row.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </Card>
