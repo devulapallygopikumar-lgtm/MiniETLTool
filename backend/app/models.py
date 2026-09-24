@@ -33,6 +33,11 @@ class Dataset(Base):
     state: Mapped[str] = mapped_column(String(32), default="discovered")
     gate_state: Mapped[str] = mapped_column(String(16), default="pending")
     row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Set once, at build time, for a derived entity -- the row count its
+    # operator spec produces against its source's *current* loaded data,
+    # before this entity has ever been Run itself. Purely informational;
+    # see migration 0008 for why this can't just be row_count.
+    preview_row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     columns_json: Mapped[list] = mapped_column(JsonType, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     latest_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)

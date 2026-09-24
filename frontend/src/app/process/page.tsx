@@ -571,7 +571,17 @@ export default function ProcessPage() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-foreground-muted">{opLabel}</td>
-                    <td className="px-4 py-3 text-foreground-muted">{d.row_count ?? "—"}</td>
+                    <td className="px-4 py-3 text-foreground-muted">
+                      {d.row_count !== null ? (
+                        d.row_count.toLocaleString()
+                      ) : d.preview_row_count !== null ? (
+                        <span title="Computed when this entity was built, from its source at that time -- not yet loaded. Run it to make this the real, final row count.">
+                          ~{d.preview_row_count.toLocaleString()}
+                        </span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       <StateBadge state={d.state} />
                     </td>

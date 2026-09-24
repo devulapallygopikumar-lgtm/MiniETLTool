@@ -45,6 +45,7 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
         state="discovered",
         gate_state="pending",
         row_count=None,
+        preview_row_count=len(rows),
         columns_json=columns_json,
     )
     db.add(dataset)

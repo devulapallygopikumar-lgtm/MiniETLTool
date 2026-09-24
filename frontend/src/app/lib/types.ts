@@ -30,6 +30,11 @@ export interface Dataset {
   state: DatasetState;
   gate_state: GateState;
   row_count: number | null;
+  // Set once, at build time, for a derived entity -- the row count its
+  // operator spec produces, before it has ever been Run itself. Not the
+  // same as row_count (which means "actually loaded"); see backend
+  // migration 0008 for why.
+  preview_row_count: number | null;
   columns: SchemaColumn[];
   created_at: string;
   latest_run_id: string | null;

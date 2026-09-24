@@ -50,6 +50,8 @@ class DatasetOut(BaseModel):
     state: DatasetState
     gate_state: GateState
     row_count: int | None
+    # Set once, at build time, for a derived entity -- see models.Dataset.
+    preview_row_count: int | None = None
     columns: list[SchemaColumn]
     created_at: datetime
     latest_run_id: str | None

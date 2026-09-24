@@ -23,6 +23,7 @@ def to_out(d: models.Dataset) -> schemas.DatasetOut:
         state=d.state,
         gate_state=d.gate_state,
         row_count=d.row_count,
+        preview_row_count=d.preview_row_count,
         columns=[schemas.SchemaColumn(**c) for c in d.columns_json],
         created_at=d.created_at,
         latest_run_id=d.latest_run_id,
