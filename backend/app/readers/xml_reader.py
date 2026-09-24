@@ -4,9 +4,10 @@ document tree, and treats a repeated record tag as its own entity — so
 (§4.5).
 
 Real exports (Tally in particular) are not strictly well-formed: they carry
-numeric character references to C0 control points (`&#4;`) that XML 1.0
-disallows. `_SanitizedXMLSource` strips only those before the elements ever
-reach the parser, so nothing else about the document is touched.
+numeric character references to C0 control points (`&#4;`), and sometimes
+those same illegal control characters raw and unescaped, that XML 1.0
+disallows. `_SanitizedXMLSource` strips both forms before the elements
+ever reach the parser, so nothing else about the document is touched.
 """
 
 import re
@@ -21,6 +22,15 @@ from .inference import infer_schema
 
 _CHARREF_RE = re.compile(r"&#([xX][0-9A-Fa-f]+|[0-9]+);")
 _ENCODING_DECL_RE = re.compile(rb'encoding\s*=\s*"[^"]*"', re.IGNORECASE)
+# Same char range XML 1.0 allows, but for characters that show up *raw* in
+# the text rather than escaped as a numeric reference -- e.g. a literal
+# 0x05 byte sitting directly in a field's content, which a real Tally
+# export can carry (not just the &#4;-style escaped form _strip_invalid_
+# charrefs handles). Both need stripping or the parser rejects the whole
+# document on the first one it hits, however far into a large file that is.
+_INVALID_XML_CHAR_RE = re.compile(
+    "[^\u0009\u000A\u000D -퟿-�\U00010000-\U0010FFFF]"
+)
 _TAIL_KEEP = 16
 
 
@@ -40,6 +50,10 @@ def _strip_invalid_charrefs(text: str) -> str:
         return m.group(0) if _is_valid_xml_char(cp) else ""
 
     return _CHARREF_RE.sub(repl, text)
+
+
+def _strip_invalid_chars(text: str) -> str:
+    return _INVALID_XML_CHAR_RE.sub("", text)
 
 
 def _detect_encoding(path: Path) -> str:
@@ -93,7 +107,7 @@ class _SanitizedXMLSource:
             if not chunk:
                 self._eof = True
                 if self._text_tail:
-                    cleaned = _strip_invalid_charrefs(self._text_tail).encode("utf-8")
+                    cleaned = _strip_invalid_chars(_strip_invalid_charrefs(self._text_tail)).encode("utf-8")
                     if self._first_chunk:
                         cleaned = self._fix_encoding_decl(cleaned)
                         self._first_chunk = False
@@ -103,7 +117,7 @@ class _SanitizedXMLSource:
             combined = self._text_tail + chunk
             safe_len = self._safe_cut(combined)
             to_clean, self._text_tail = combined[:safe_len], combined[safe_len:]
-            cleaned = _strip_invalid_charrefs(to_clean).encode("utf-8")
+            cleaned = _strip_invalid_chars(_strip_invalid_charrefs(to_clean)).encode("utf-8")
             if self._first_chunk:
                 cleaned = self._fix_encoding_decl(cleaned)
                 self._first_chunk = False

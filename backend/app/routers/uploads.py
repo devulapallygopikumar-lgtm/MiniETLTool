@@ -26,7 +26,7 @@ async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db
 
     try:
         datasets = discover_and_create_datasets(db, path, filename, format)
-    except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001 - surfaced to the user as a readable upload error
+        raise HTTPException(422, f"Could not read this file: {exc}") from exc
 
     return schemas.UploadResult(datasets=[to_out(d) for d in datasets])
