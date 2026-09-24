@@ -7,9 +7,9 @@ const STYLES: Record<GateState, string> = {
 };
 
 const LABELS: Record<GateState, string> = {
-  open: "Gate open",
-  closed: "Gate closed",
-  pending: "Gate pending",
+  open: "Validation passed",
+  closed: "Validation failed",
+  pending: "Not validated yet",
 };
 
 export function GateBadge({ state }: { state: GateState }) {

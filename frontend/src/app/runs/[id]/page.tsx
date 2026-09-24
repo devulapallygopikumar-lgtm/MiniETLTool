@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   ApiError,
@@ -11,7 +11,7 @@ import {
 } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconX } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconX, Pagination, usePagination } from "@/app/components/ui";
 import type { Run, RunValidation, ValidationIssueRow } from "@/app/lib/types";
 
 const TERMINAL_STATES = new Set([
@@ -32,6 +32,20 @@ export default function RunPage() {
   const [rows, setRows] = useState<ValidationIssueRow[] | null>(null);
   const [rowsError, setRowsError] = useState<string | null>(null);
   const [resultsCollapsed, setResultsCollapsed] = useState(false);
+
+  // Blocking (mandatory + violated) first, then by violation count.
+  const sortedResults = useMemo(
+    () =>
+      [...(validation?.results ?? [])].sort((a, b) => {
+        const aBlock = a.enforcement === "mandatory" && a.violations > 0;
+        const bBlock = b.enforcement === "mandatory" && b.violations > 0;
+        if (aBlock !== bBlock) return aBlock ? -1 : 1;
+        return b.violations - a.violations;
+      }),
+    [validation]
+  );
+  const resultsPager = usePagination(sortedResults);
+  const rowsPager = usePagination(rows);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,13 +192,7 @@ export default function RunPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...validation.results]
-                      .sort((a, b) => {
-                        const aBlock = a.enforcement === "mandatory" && a.violations > 0;
-                        const bBlock = b.enforcement === "mandatory" && b.violations > 0;
-                        if (aBlock !== bBlock) return aBlock ? -1 : 1;
-                        return b.violations - a.violations;
-                      })
+                    {resultsPager.pageItems
                       .map((r) => (
                         <tr key={r.rule_id} className="border-b border-border last:border-0">
                           <td className="px-3 py-2">
@@ -235,6 +243,7 @@ export default function RunPage() {
                   </tbody>
                 </table>
               </div>
+              <Pagination pager={resultsPager} className="mt-2" />
             </div>
           )}
         </Card>
@@ -270,7 +279,7 @@ export default function RunPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row, i) => (
+                    {rowsPager.pageItems.map((row, i) => (
                       <tr key={i} className="border-b border-border last:border-0">
                         <td className="px-3 py-1.5 font-mono text-xs">{row.row_ordinal}</td>
                         <td className="px-3 py-1.5 text-foreground-muted">
@@ -288,6 +297,7 @@ export default function RunPage() {
                 </table>
               </div>
             )}
+            {rows && <Pagination pager={rowsPager} className="mt-2" />}
           </div>
         </Card>
       )}

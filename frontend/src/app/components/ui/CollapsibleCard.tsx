@@ -13,6 +13,7 @@ import { IconChevronRight } from "./icons";
 export function CollapsibleCard({
   title,
   actions,
+  footer,
   children,
   maxHeight = "60vh",
   defaultCollapsed = false,
@@ -20,6 +21,8 @@ export function CollapsibleCard({
 }: {
   title: ReactNode;
   actions?: ReactNode;
+  /** Rendered below the scroll area, e.g. a <Pagination> bar. */
+  footer?: ReactNode;
   children: ReactNode;
   maxHeight?: string;
   defaultCollapsed?: boolean;
@@ -47,6 +50,9 @@ export function CollapsibleCard({
         <div className="overflow-auto" style={{ maxHeight }}>
           {children}
         </div>
+      )}
+      {!collapsed && footer && (
+        <div className="border-t-2 border-border bg-surface-soft px-4 py-2 empty:hidden">{footer}</div>
       )}
     </div>
   );

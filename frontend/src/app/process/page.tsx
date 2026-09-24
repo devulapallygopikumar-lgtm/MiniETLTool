@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, createDerivedDataset, listDatasets } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Button, Card, CardHeader, CollapsibleCard, FormField, IconPlus, IconX } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, FormField, IconPlus, IconX } from "@/app/components/ui";
 import type { Dataset, DerivedOp } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -102,6 +102,7 @@ export default function ProcessPage() {
         .sort((a, b) => b.created_at.localeCompare(a.created_at)),
     [allDatasets]
   );
+  const pager = usePagination(builtEntities);
   const source = useMemo(() => finalDatasets.find((d) => d.id === sourceId) ?? null, [finalDatasets, sourceId]);
   const right = useMemo(() => finalDatasets.find((d) => d.id === rightId) ?? null, [finalDatasets, rightId]);
   const sourceColumns = source?.columns ?? [];
@@ -547,7 +548,7 @@ export default function ProcessPage() {
       )}
 
       {builtEntities.length > 0 && (
-        <CollapsibleCard title={`${builtEntities.length} built entit${builtEntities.length === 1 ? "y" : "ies"}`}>
+        <CollapsibleCard title={`${builtEntities.length} built entit${builtEntities.length === 1 ? "y" : "ies"}`} footer={<Pagination pager={pager} />}>
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
@@ -555,11 +556,11 @@ export default function ProcessPage() {
                 <th className="px-4 py-3 font-medium">Operation</th>
                 <th className="px-4 py-3 font-medium">Rows</th>
                 <th className="px-4 py-3 font-medium">State</th>
-                <th className="px-4 py-3 font-medium">Gate</th>
+                <th className="px-4 py-3 font-medium">Validation</th>
               </tr>
             </thead>
             <tbody>
-              {builtEntities.map((d) => {
+              {pager.pageItems.map((d) => {
                 const opValue = d.source_filename.split(" of ")[0];
                 const opLabel = OPS.find((o) => o.value === opValue)?.label ?? opValue;
                 return (

@@ -9,7 +9,7 @@ import {
   testConnection,
   updateConnection,
 } from "@/app/lib/api";
-import { Alert, Button, Card, CardHeader, CollapsibleCard, FormField, IconPlus } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, FormField, IconPlus } from "@/app/components/ui";
 import type { Connection, ConnectionKind, NewConnection } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -50,6 +50,7 @@ function statusLabel(c: Connection): { text: string; className: string } {
 export default function TargetDatasetPage() {
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pager = usePagination(connections);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<NewConnection>(emptyDraft());
@@ -279,7 +280,7 @@ export default function TargetDatasetPage() {
       )}
 
       {connections !== null && connections.length > 0 && (
-        <CollapsibleCard title={`${connections.length} connection${connections.length === 1 ? "" : "s"}`}>
+        <CollapsibleCard title={`${connections.length} connection${connections.length === 1 ? "" : "s"}`} footer={<Pagination pager={pager} />}>
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
@@ -292,7 +293,7 @@ export default function TargetDatasetPage() {
               </tr>
             </thead>
             <tbody>
-              {connections.map((c) => {
+              {pager.pageItems.map((c) => {
                 const status = statusLabel(c);
                 return (
                   <tr key={c.id} className="border-b border-border last:border-0 hover:bg-surface-soft">

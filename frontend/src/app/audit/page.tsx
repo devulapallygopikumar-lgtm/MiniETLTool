@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, listAuditEvents } from "@/app/lib/api";
-import { Alert, CollapsibleCard } from "@/app/components/ui";
+import { Alert, CollapsibleCard, Pagination, usePagination } from "@/app/components/ui";
 import type { AuditEvent } from "@/app/lib/types";
 
 export default function AuditPage() {
   const [events, setEvents] = useState<AuditEvent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pager = usePagination(events);
 
   useEffect(() => {
     listAuditEvents()
@@ -37,7 +38,7 @@ export default function AuditPage() {
       )}
 
       {events !== null && events.length > 0 && (
-        <CollapsibleCard title={`${events.length} audit event${events.length === 1 ? "" : "s"}`}>
+        <CollapsibleCard title={`${events.length} audit event${events.length === 1 ? "" : "s"}`} footer={<Pagination pager={pager} />}>
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
@@ -49,7 +50,7 @@ export default function AuditPage() {
               </tr>
             </thead>
             <tbody>
-              {events.map((e) => (
+              {pager.pageItems.map((e) => (
                 <tr
                   key={e.id}
                   className="border-b border-border last:border-0 hover:bg-surface-soft"

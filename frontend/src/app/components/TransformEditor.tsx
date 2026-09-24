@@ -176,7 +176,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
 
       <div className="p-4">
         <p className="mb-3 text-xs text-foreground-muted">
-          Runs after the gate opens, before load, in a fixed order: filter →
+          Runs after validation passes, before load, in a fixed order: filter →
           dedupe → sort → rename → lookup → derive → cast → mask → fill
           default → sequence → project. Validation still sees the original
           values — a Mandatory rule still blocks the run even if a

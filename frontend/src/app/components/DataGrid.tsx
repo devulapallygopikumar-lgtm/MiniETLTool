@@ -6,12 +6,13 @@
 // actions, detail drawer are all cut per §20.5); this is its seed.
 //
 // Grid rules applied wherever this is used: a collapsible panel (to save
-// vertical space on a page with several grids) and CSV/Excel/PDF export
-// of whatever rows are currently rendered in this grid instance -- not
-// the full dataset, since there's no full-download endpoint behind this.
+// vertical space on a page with several grids), client-side pagination,
+// and CSV/Excel/PDF export of every row loaded into this grid instance
+// (all pages, not just the visible one) -- but not the full dataset,
+// since there's no full-download endpoint behind this.
 
 import { useState } from "react";
-import { Button, IconChevronRight, IconDownload } from "@/app/components/ui";
+import { Button, IconChevronRight, IconDownload, Pagination, usePagination } from "@/app/components/ui";
 
 type Row = Record<string, unknown>;
 
@@ -78,6 +79,7 @@ export function DataGrid({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
+  const pager = usePagination(rows);
   const cols = columns ?? Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
   const filename = (title ?? "data").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "data";
 
@@ -143,7 +145,7 @@ export function DataGrid({
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
+              {pager.pageItems.map((row, i) => (
                 <tr key={i} className="border-b border-border last:border-0 hover:bg-surface-soft">
                   {cols.map((c) => (
                     <td
@@ -159,6 +161,7 @@ export function DataGrid({
           </table>
         </div>
       )}
+      {!collapsed && <Pagination pager={pager} />}
     </div>
   );
 }

@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import { ApiError, deleteDataset, listDatasets, resetEverything } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Button, Card, CardHeader, CollapsibleCard, IconUpload } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, IconUpload } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function DatasetsPage() {
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pager = usePagination(datasets);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export default function DatasetsPage() {
       )}
 
       {datasets !== null && datasets.length > 0 && (
-        <CollapsibleCard title={`${datasets.length} dataset${datasets.length === 1 ? "" : "s"}`}>
+        <CollapsibleCard title={`${datasets.length} dataset${datasets.length === 1 ? "" : "s"}`} footer={<Pagination pager={pager} />}>
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
@@ -106,12 +107,12 @@ export default function DatasetsPage() {
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Rows</th>
                 <th className="px-4 py-3 font-medium">State</th>
-                <th className="px-4 py-3 font-medium">Gate</th>
+                <th className="px-4 py-3 font-medium">Validation</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {datasets.map((d) => (
+              {pager.pageItems.map((d) => (
                 <tr
                   key={d.id}
                   className="border-b border-border last:border-0 hover:bg-surface-soft"

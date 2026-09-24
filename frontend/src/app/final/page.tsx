@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApiError, listDatasets } from "@/app/lib/api";
-import { Alert, Card, CollapsibleCard } from "@/app/components/ui";
+import { Alert, Card, CollapsibleCard, Pagination, usePagination } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function FinalDatasetsPage() {
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const pager = usePagination(datasets);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,14 +50,14 @@ export default function FinalDatasetsPage() {
       {datasets !== null && datasets.length === 0 && !error && (
         <div className="rounded-md border border-dashed border-border bg-surface px-4 py-10 text-center">
           <p className="text-sm text-foreground-muted">
-            Nothing here yet — a dataset shows up once its gate has opened
+            Nothing here yet — a dataset shows up once it has passed validation
             and a run has loaded it at least once.
           </p>
         </div>
       )}
 
       {datasets !== null && datasets.length > 0 && (
-        <CollapsibleCard title={`${datasets.length} final dataset${datasets.length === 1 ? "" : "s"}`}>
+        <CollapsibleCard title={`${datasets.length} final dataset${datasets.length === 1 ? "" : "s"}`} footer={<Pagination pager={pager} />}>
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
@@ -66,7 +67,7 @@ export default function FinalDatasetsPage() {
               </tr>
             </thead>
             <tbody>
-              {datasets.map((d) => (
+              {pager.pageItems.map((d) => (
                 <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-soft">
                   <td className="px-4 py-3">
                     <Link href={`/final/${d.id}`} className="font-medium text-foreground hover:text-primary">

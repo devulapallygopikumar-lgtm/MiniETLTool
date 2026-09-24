@@ -10,7 +10,7 @@ import { RuleEditor } from "@/app/components/RuleEditor";
 import { TransformEditor } from "@/app/components/TransformEditor";
 import { RunHistory } from "@/app/components/RunHistory";
 import { DataGrid } from "@/app/components/DataGrid";
-import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconInfo } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconInfo, Pagination, usePagination } from "@/app/components/ui";
 import type { Dataset, RunValidation } from "@/app/lib/types";
 
 export default function DatasetPage() {
@@ -25,6 +25,7 @@ export default function DatasetPage() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [schemaCollapsed, setSchemaCollapsed] = useState(false);
+  const schemaPager = usePagination(dataset?.columns);
 
   function refresh() {
     getDataset(id)
@@ -174,7 +175,7 @@ export default function DatasetPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {dataset.columns.map((c) => (
+                      {schemaPager.pageItems.map((c) => (
                         <tr key={c.name} className="border-b border-border last:border-0">
                           <td className="px-3 py-1.5 font-mono text-xs">{c.name}</td>
                           <td className="px-3 py-1.5 text-foreground-muted">{c.type}</td>
@@ -187,6 +188,7 @@ export default function DatasetPage() {
                   </table>
                 </div>
               ) : null}
+              {!schemaCollapsed && <Pagination pager={schemaPager} className="mt-2" />}
             </div>
           </Card>
 

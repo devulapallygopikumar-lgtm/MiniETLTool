@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ApiError, listRuns } from "@/app/lib/api";
 import type { Run } from "@/app/lib/types";
-import { Alert, Button, Card, CardHeader, IconChevronRight } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, IconChevronRight, Pagination, usePagination } from "@/app/components/ui";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 
@@ -12,6 +12,7 @@ export function RunHistory({ datasetId }: { datasetId: string }) {
   const [runs, setRuns] = useState<Run[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const pager = usePagination(runs);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,14 +63,14 @@ export function RunHistory({ datasetId }: { datasetId: string }) {
                 <tr>
                   <th className="px-3 py-2 font-medium">When</th>
                   <th className="px-3 py-2 font-medium">State</th>
-                  <th className="px-3 py-2 font-medium">Gate</th>
+                  <th className="px-3 py-2 font-medium">Validation</th>
                   <th className="px-3 py-2 font-medium">Read</th>
                   <th className="px-3 py-2 font-medium">Written</th>
                   <th className="px-3 py-2 font-medium">Rejected</th>
                 </tr>
               </thead>
               <tbody>
-                {runs.map((r) => (
+                {pager.pageItems.map((r) => (
                   <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface-soft">
                     <td className="px-3 py-2">
                       <Link href={`/runs/${r.id}`} className="text-primary hover:text-primary-dark">
@@ -93,6 +94,7 @@ export function RunHistory({ datasetId }: { datasetId: string }) {
             </table>
           </div>
         )}
+        {runs !== null && !collapsed && <Pagination pager={pager} className="mt-2" />}
       </div>
     </Card>
   );

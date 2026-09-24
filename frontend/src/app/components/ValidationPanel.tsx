@@ -22,7 +22,7 @@ export function ValidationPanel({ gateState, results, runId, live }: Props) {
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface p-4 lg:sticky lg:top-4 lg:self-start">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Validation gate</h2>
+        <h2 className="text-sm font-semibold">Validation</h2>
         <GateBadge state={gateState} />
       </div>
 
