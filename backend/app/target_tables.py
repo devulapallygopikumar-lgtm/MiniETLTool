@@ -100,7 +100,38 @@ def ensure_table(conn: Connection, table_name: str, columns: list[dict]) -> list
             f")"
         )
     )
+
+    # The table may already have existed with fewer/different columns --
+    # a later run's transforms (rename/derive/cast/sequence/project) can
+    # change the output schema at any time, and CREATE TABLE IF NOT
+    # EXISTS above is then a no-op. Reconcile by adding whatever this
+    # run's columns are missing; existing rows get NULL for a newly
+    # added column, same as any other schema migration.
+    existing = set(physical_columns(conn, table_name))
+    for _, phys, type_key in col_map:
+        if phys not in existing:
+            conn.execute(sa_text(f'ALTER TABLE "{table_name}" ADD COLUMN "{phys}" {_PG_TYPES.get(type_key, "TEXT")}'))
+
     return col_map
+
+
+def physical_columns(conn: Connection, table_name: str) -> list[str]:
+    """The real, current data columns of an already-materialized typed
+    table, in physical order -- excludes the bookkeeping columns every
+    such table also has (id/run_id/row_ordinal/loaded_at). Unlike a
+    dataset's pinned columns_json (set once at discovery), this reflects
+    whatever a run's transforms actually produced (rename/derive/
+    sequence/project all change the shape) -- see app/derived.py, which
+    needs the real thing to let a "process into a new entity" op
+    reference a transform-derived column."""
+    rows = conn.execute(
+        sa_text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = :t ORDER BY ordinal_position"
+        ),
+        {"t": table_name},
+    ).all()
+    return [r[0] for r in rows if r[0] not in _RESERVED_COLUMNS]
 
 
 def _cast_value(value: str | None, type_key: str) -> object:
@@ -131,6 +162,14 @@ def insert_rows(
     row_ordinals: list[int],
     col_map: list[tuple[str, str, str]],
 ) -> None:
+    # Each successful run replaces this dataset's typed table with its own
+    # batch -- the table has a 1:1 owning dataset (via mapping.target_table),
+    # so this can't touch another dataset's rows. Without this, a second
+    # run just appends: previews, exports and every Process Data op reading
+    # this table would silently double up (or worse) on every re-run.
+    # loaded_rows is untouched and keeps every run's rows for audit --
+    # this table's job is "current queryable state", not history.
+    conn.execute(sa_text(f'TRUNCATE TABLE "{table_name}"'))
     if not rows:
         return
     phys_cols = [phys for _, phys, _ in col_map]

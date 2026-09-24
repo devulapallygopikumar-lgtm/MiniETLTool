@@ -36,9 +36,13 @@ def _dataset(db: Session, dataset_id: str) -> models.Dataset:
     return dataset
 
 
-def _col_map(dataset: models.Dataset) -> dict[str, str]:
-    """logical column name -> unquoted physical column name in the typed table."""
-    return {name: phys for name, phys, _ in target_tables.build_column_map(dataset.columns_json)}
+def _col_map(db: Session, dataset: models.Dataset) -> dict[str, str]:
+    """column name -> itself, from the typed table's real current columns
+    -- not dataset.columns_json (the pinned discovery-time schema), which
+    goes stale the moment a rename/derive/sequence/project transform runs
+    (see target_tables.physical_columns)."""
+    table = _table(dataset)
+    return {c: c for c in target_tables.physical_columns(db.connection(), table)}
 
 
 def _table(dataset: models.Dataset) -> str:
@@ -62,7 +66,7 @@ def build_sql(db: Session, spec: dict) -> tuple[str, list[str]]:
     op = spec.get("op")
     args = spec.get("args") or {}
     source = _dataset(db, spec["source_dataset_id"])
-    cols = _col_map(source)
+    cols = _col_map(db, source)
     table = _q(_table(source))
 
     if op == "sort":
@@ -79,7 +83,7 @@ def build_sql(db: Session, spec: dict) -> tuple[str, list[str]]:
         return _unpivot_sql(table, cols, args)
     if op == "join":
         right = _dataset(db, args["right_dataset_id"])
-        right_cols = _col_map(right)
+        right_cols = _col_map(db, right)
         right_table = _q(_table(right))
         return _join_sql(table, cols, right_table, right_cols, args)
     raise ValueError(f"Unsupported operation: {op}")

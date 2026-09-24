@@ -24,7 +24,13 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 
-    columns_json = infer_schema(rows[:50], columns)
+    # Infer from every row, not a sample -- unlike a file upload's discovery
+    # step (which samples for performance before reading a huge file), the
+    # full result set is already in memory here. A 50-row sample that
+    # happens to look all-integer while later rows have decimals would
+    # otherwise type the column "integer", silently truncating those later
+    # values to NULL when the typed table is created.
+    columns_json = infer_schema(rows, columns)
 
     existing_tables = {t for (t,) in db.query(models.Mapping.target_table).all()}
     table_name = target_tables.unique_table_name(
