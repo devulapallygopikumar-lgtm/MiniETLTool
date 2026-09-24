@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, getDataset, getRunValidation, previewDataset, runDataset } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
@@ -26,6 +26,7 @@ export default function DatasetPage() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [schemaCollapsed, setSchemaCollapsed] = useState(false);
   const schemaPager = usePagination(dataset?.columns);
+  const previewCardRef = useRef<HTMLDivElement>(null);
 
   function refresh() {
     getDataset(id)
@@ -43,6 +44,19 @@ export default function DatasetPage() {
   }
 
   useEffect(refresh, [id]);
+
+  // Clicking a dataset from a list (Home, Final Datasets, Process Data)
+  // lands here at the top of the page, with the grid itself -- Source
+  // preview -- below the Validation/Rules/Transforms cards. Jump straight
+  // to it instead of making people scroll. Keyed on dataset.id rather
+  // than the route's id: the page renders a "Loading dataset..."
+  // placeholder (no card, no ref) until the fetch resolves, so scrolling
+  // any earlier would find nothing to scroll to.
+  useEffect(() => {
+    if (dataset) {
+      previewCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [dataset?.id]);
 
   async function loadPreview() {
     setPreviewLoading(true);
@@ -100,7 +114,7 @@ export default function DatasetPage() {
 
       {error && <Alert>{error}</Alert>}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[320px_1fr]">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[320px_minmax(0,1fr)]">
         <ValidationPanel
           gateState={validation?.gate_state ?? dataset.gate_state}
           results={validation?.results ?? []}
@@ -112,6 +126,7 @@ export default function DatasetPage() {
 
         <div className="flex flex-col gap-6">
           <Card>
+            <div ref={previewCardRef} />
             <CardHeader
               title="Source preview"
               actions={
