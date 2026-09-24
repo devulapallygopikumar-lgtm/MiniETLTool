@@ -37,9 +37,15 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
         target_tables.slugify_identifier(body.name), existing_tables
     )
 
+    # A human-readable name, not the source's raw id -- this is what
+    # shows up as "Source" wherever a dataset is listed (Home, Final
+    # Datasets, this dataset's own page).
+    source = db.get(models.Dataset, body.source_dataset_id)
+    source_label = source.name if source else body.source_dataset_id
+
     dataset = models.Dataset(
         name=body.name,
-        source_filename=f"{body.op} of {body.source_dataset_id}",
+        source_filename=f"{body.op} of {source_label}",
         format="derived",
         entity_name=body.name,
         state="discovered",
