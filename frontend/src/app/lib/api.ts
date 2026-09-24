@@ -73,6 +73,10 @@ export function getDataset(id: string): Promise<Dataset> {
   return request(`/api/v1/datasets/${id}`);
 }
 
+export function deleteDataset(id: string): Promise<void> {
+  return request(`/api/v1/datasets/${id}`, { method: "DELETE" });
+}
+
 export function previewDataset(
   id: string,
   limit = 50

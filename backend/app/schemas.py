@@ -192,6 +192,7 @@ class ResetSummary(BaseModel):
     validation_results: int
     validation_issues: int
     loaded_rows: int
+    audit_events: int
 
 
 ConnectionKind = Literal["postgres", "mysql", "sqlserver"]

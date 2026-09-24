@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError, listDatasets, resetEverything } from "@/app/lib/api";
+import { ApiError, deleteDataset, listDatasets, resetEverything } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { Alert, Button, Card, CardHeader, IconUpload } from "@/app/components/ui";
@@ -14,6 +14,8 @@ export default function DatasetsPage() {
   const [confirmingReset, setConfirmingReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   function refresh() {
     listDatasets()
@@ -40,6 +42,21 @@ export default function DatasetsPage() {
     } finally {
       setResetting(false);
       setConfirmingReset(false);
+    }
+  }
+
+  async function confirmDelete(dataset: Dataset) {
+    setDeletingId(dataset.id);
+    setError(null);
+    try {
+      await deleteDataset(dataset.id);
+      setResetMessage(`"${dataset.name}" deleted.`);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to delete dataset.");
+    } finally {
+      setDeletingId(null);
+      setConfirmingDeleteId(null);
     }
   }
 
@@ -93,6 +110,7 @@ export default function DatasetsPage() {
                 <th className="px-4 py-3 font-medium">Rows</th>
                 <th className="px-4 py-3 font-medium">State</th>
                 <th className="px-4 py-3 font-medium">Gate</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -127,6 +145,38 @@ export default function DatasetsPage() {
                   <td className="px-4 py-3">
                     <GateBadge state={d.gate_state} />
                   </td>
+                  <td className="px-4 py-3">
+                    {confirmingDeleteId === d.id ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-foreground-muted">Delete?</span>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={deletingId === d.id}
+                          onClick={() => confirmDelete(d)}
+                        >
+                          {deletingId === d.id ? "…" : "Yes"}
+                        </Button>
+                        <Button
+                          variant="white"
+                          size="sm"
+                          disabled={deletingId === d.id}
+                          onClick={() => setConfirmingDeleteId(null)}
+                        >
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="white"
+                        size="sm"
+                        className="border-0 text-foreground-muted hover:text-danger"
+                        onClick={() => setConfirmingDeleteId(d.id)}
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -141,9 +191,8 @@ export default function DatasetsPage() {
         <div className="flex flex-col gap-3 p-4">
           <p className="text-xs text-foreground-muted">
             Permanently delete every dataset, mapping, rule, transform and
-            run — all staged, rejected and loaded rows, and every typed
-            table they produced. The audit log is kept. This cannot be
-            undone.
+            run — all staged, rejected and loaded rows, every typed table
+            they produced, and the entire audit log. This cannot be undone.
           </p>
           {!confirmingReset && (
             <Button

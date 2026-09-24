@@ -14,9 +14,10 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 @router.post("/reset", response_model=schemas.ResetSummary)
 def reset_everything(db: Session = Depends(get_db)):
-    """Deletes every dataset, mapping, rule, transform and run (and every
-    row/table they produced), back to an empty system. The audit log is
-    append-only and is left untouched, aside from the event this logs."""
+    """Deletes every dataset, mapping, rule, transform, run and audit event
+    (and every row/table they produced) -- a genuinely empty system. Logs
+    one fresh system.reset event afterward, so there's still a record that
+    a reset happened and when."""
     dataset_count = db.query(models.Dataset).count()
     for (table,) in db.query(models.Mapping.target_table).all():
         db.execute(sa_text(f'DROP TABLE IF EXISTS "{table}"'))
@@ -32,9 +33,8 @@ def reset_everything(db: Session = Depends(get_db)):
         validation_results=db.query(models.ValidationResult).count(),
         validation_issues=db.query(models.ValidationIssue).count(),
         loaded_rows=db.query(models.LoadedRow).count(),
+        audit_events=db.query(models.AuditEvent).count(),
     )
-
-    audit.log(db, "system.reset", "system", "all", reason=f"{summary.datasets} dataset(s) deleted")
 
     db.query(models.ValidationIssue).delete()
     db.query(models.ValidationResult).delete()
@@ -46,6 +46,8 @@ def reset_everything(db: Session = Depends(get_db)):
     db.query(models.ValidationRule).delete()
     db.query(models.Mapping).delete()
     db.query(models.Dataset).delete()
+    db.query(models.AuditEvent).delete()
 
+    audit.log(db, "system.reset", "system", "all", reason=f"{summary.datasets} dataset(s) deleted")
     db.commit()
     return summary

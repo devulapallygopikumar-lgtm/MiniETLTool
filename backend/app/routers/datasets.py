@@ -1,9 +1,10 @@
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Session
 
-from .. import derived, models, schemas
+from .. import audit, derived, models, schemas
 from ..database import get_db
 from ..readers.base import read_rows
 
@@ -44,6 +45,46 @@ def list_datasets(db: Session = Depends(get_db)):
 @router.get("/{dataset_id}", response_model=schemas.DatasetOut)
 def get_dataset(dataset_id: str, db: Session = Depends(get_db)):
     return to_out(get_dataset_or_404(db, dataset_id))
+
+
+@router.delete("/{dataset_id}", status_code=204)
+def delete_dataset(dataset_id: str, db: Session = Depends(get_db)):
+    """Deletes this one dataset and everything it owns -- its mapping,
+    rules, transforms, runs (and their staged/rejected/validation rows),
+    loaded rows, and its typed table -- leaving every other dataset
+    untouched. Unlike /api/v1/admin/reset, this is scoped to one dataset."""
+    dataset = get_dataset_or_404(db, dataset_id)
+
+    mapping = dataset.mapping
+    if mapping is not None:
+        db.execute(sa_text(f'DROP TABLE IF EXISTS "{mapping.target_table}"'))
+
+    run_ids = [r.id for r in db.query(models.Run.id).filter_by(dataset_id=dataset_id).all()]
+    if run_ids:
+        db.query(models.ValidationIssue).filter(models.ValidationIssue.run_id.in_(run_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(models.ValidationResult).filter(models.ValidationResult.run_id.in_(run_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(models.StagingRow).filter(models.StagingRow.run_id.in_(run_ids)).delete(
+            synchronize_session=False
+        )
+        db.query(models.RejectedRow).filter(models.RejectedRow.run_id.in_(run_ids)).delete(
+            synchronize_session=False
+        )
+
+    db.query(models.LoadedRow).filter_by(dataset_id=dataset_id).delete()
+    db.query(models.Run).filter_by(dataset_id=dataset_id).delete()
+    db.query(models.Transform).filter_by(dataset_id=dataset_id).delete()
+    db.query(models.ValidationRule).filter_by(dataset_id=dataset_id).delete()
+    if mapping is not None:
+        db.delete(mapping)
+    db.delete(dataset)
+
+    audit.log(db, "dataset.deleted", "dataset", dataset_id, reason=f"name={dataset.name}")
+    db.commit()
+    return Response(status_code=204)
 
 
 def _capped(generator, limit: int) -> list[dict]:
