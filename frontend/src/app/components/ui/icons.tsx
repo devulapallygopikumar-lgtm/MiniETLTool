@@ -79,6 +79,15 @@ export function IconPlus({ className = "h-3.5 w-3.5" }: IconProps) {
   );
 }
 
+export function IconDownload({ className = "h-3.5 w-3.5" }: IconProps) {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className={className}>
+      <path d="M10 2a.75.75 0 0 1 .75.75v8.19l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 1 1 1.06-1.06l2.22 2.22V2.75A.75.75 0 0 1 10 2Z" />
+      <path d="M3.5 12.75a.75.75 0 0 1 .75.75v2a.5.5 0 0 0 .5.5h10.5a.5.5 0 0 0 .5-.5v-2a.75.75 0 0 1 1.5 0v2a2 2 0 0 1-2 2H4.75a2 2 0 0 1-2-2v-2a.75.75 0 0 1 .75-.75Z" />
+    </svg>
+  );
+}
+
 export function IconX({ className = "h-3.5 w-3.5" }: IconProps) {
   return (
     <svg viewBox="0 0 20 20" fill="currentColor" className={className}>

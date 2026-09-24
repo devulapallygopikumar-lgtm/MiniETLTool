@@ -125,7 +125,11 @@ export default function DatasetPage() {
               </p>
               {previewError && <Alert>{previewError}</Alert>}
               {!previewError && preview && (
-                <DataGrid rows={preview} columns={dataset.columns.map((c) => c.name)} />
+                <DataGrid
+                  rows={preview}
+                  columns={dataset.columns.map((c) => c.name)}
+                  title={`${dataset.name}-source-preview`}
+                />
               )}
             </div>
           </Card>

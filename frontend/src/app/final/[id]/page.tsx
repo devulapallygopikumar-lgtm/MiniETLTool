@@ -77,7 +77,7 @@ export default function FinalDatasetPage() {
               pinned source schema (rename/derive/cast/sequence/project
               transforms all change it), so DataGrid derives headers from
               the actual returned rows instead. */}
-          {rows !== null && <DataGrid rows={rows} />}
+          {rows !== null && <DataGrid rows={rows} title={`${dataset.name}-loaded`} />}
           {rows !== null && rows.length >= limit && (
             <Button
               variant="white"
