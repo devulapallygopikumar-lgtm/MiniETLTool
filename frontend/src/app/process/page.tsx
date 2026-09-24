@@ -89,7 +89,24 @@ export default function ProcessPage() {
       );
   }
 
-  useEffect(refreshDatasets, []);
+  useEffect(() => {
+    refreshDatasets();
+    // A dataset can be Run from a different page (its own detail page),
+    // in another tab, or via browser back/forward -- none of which
+    // remount this page, so a mount-only fetch can go stale (e.g. a
+    // just-run entity still showing "not validated" here after it
+    // already shows as final on /final). Catch up whenever this tab
+    // becomes the active one again.
+    function onFocus() {
+      if (document.visibilityState === "visible") refreshDatasets();
+    }
+    document.addEventListener("visibilitychange", onFocus);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      document.removeEventListener("visibilitychange", onFocus);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
 
   const finalDatasets = useMemo(
     () => (allDatasets ?? []).filter((d) => d.row_count !== null),
