@@ -15,6 +15,10 @@ const LINKS = [
 export function Nav() {
   const pathname = usePathname();
 
+  // The landing page is the product's front door, not a working screen --
+  // it owns its own header/wordmark rather than wearing this app chrome.
+  if (pathname === "/landing") return null;
+
   return (
     <header className="border-b border-border bg-surface">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
