@@ -1,12 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ApiError, createDerivedDataset, listDatasets } from "@/app/lib/api";
+import { ApiError, createDerivedDataset, listDatasets, previewDataset, previewLoaded } from "@/app/lib/api";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, FormField, IconPlus, IconX } from "@/app/components/ui";
+import { DataGrid } from "@/app/components/DataGrid";
+import {
+  Alert,
+  Button,
+  Card,
+  CardHeader,
+  CollapsibleCard,
+  Pagination,
+  usePagination,
+  FormField,
+  IconChevronRight,
+  IconPlus,
+  IconX,
+} from "@/app/components/ui";
 import type { Dataset, DerivedOp } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -28,7 +41,7 @@ const OP_DESCRIPTIONS: Record<DerivedOp, string> = {
   window: "Add a column computed over a window of rows (row number, rank, running sum, etc.) without collapsing rows.",
   pivot: "Turn distinct values of one column into new columns, aggregating a value column into each.",
   unpivot: "Turn several columns into two: a category column and a value column, one row per original column.",
-  join: "Combine two final datasets on a matching key column.",
+  join: "Combine this dataset with one or more other final datasets, each on its own matching key column.",
 };
 
 const AGG_FUNCS = ["count", "sum", "avg", "min", "max"];
@@ -38,6 +51,18 @@ interface Aggregate {
   function: string;
   column: string;
   as: string;
+}
+
+interface JoinSpec {
+  rightId: string;
+  joinType: string;
+  leftKey: string;
+  rightKey: string;
+  rightPrefix: string;
+}
+
+function emptyJoin(): JoinSpec {
+  return { rightId: "", joinType: "inner", leftKey: "", rightKey: "", rightPrefix: "" };
 }
 
 function parseList(value: string): string[] {
@@ -54,7 +79,6 @@ export default function ProcessPage() {
   const [name, setName] = useState("");
   const [op, setOp] = useState<DerivedOp>("group_by");
   const [sourceId, setSourceId] = useState("");
-  const [rightId, setRightId] = useState("");
 
   // op-specific fields
   const [sortColumn, setSortColumn] = useState("");
@@ -75,11 +99,8 @@ export default function ProcessPage() {
   const [unpivotColumns, setUnpivotColumns] = useState("");
   const [unpivotCategoryName, setUnpivotCategoryName] = useState("category");
   const [unpivotValueName, setUnpivotValueName] = useState("value");
-  const [joinType, setJoinType] = useState("inner");
-  const [leftKey, setLeftKey] = useState("");
-  const [rightKey, setRightKey] = useState("");
   const [leftPrefix, setLeftPrefix] = useState("l_");
-  const [rightPrefix, setRightPrefix] = useState("r_");
+  const [joins, setJoins] = useState<JoinSpec[]>([emptyJoin()]);
 
   function refreshDatasets() {
     listDatasets()
@@ -120,10 +141,50 @@ export default function ProcessPage() {
     [allDatasets]
   );
   const pager = usePagination(builtEntities);
+
+  // Clicking a built entity shows its grid inline, in this same row --
+  // not a navigation to its dataset/Run page. One expanded at a time;
+  // rows are cached per entity id so re-toggling doesn't refetch.
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [entityRows, setEntityRows] = useState<
+    Record<string, Record<string, unknown>[] | "loading" | string>
+  >({});
+
+  function toggleEntity(d: Dataset) {
+    if (expandedId === d.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(d.id);
+    if (d.id in entityRows) return;
+    setEntityRows((r) => ({ ...r, [d.id]: "loading" }));
+    // Loaded (has row_count): show the real loaded data. Not yet run:
+    // fall back to a live preview -- a derived dataset's /preview
+    // re-executes its operator spec fresh each call, no Run required.
+    const fetcher = d.row_count !== null ? previewLoaded : previewDataset;
+    fetcher(d.id, 200)
+      .then((rows) => setEntityRows((r) => ({ ...r, [d.id]: rows })))
+      .catch((err: unknown) =>
+        setEntityRows((r) => ({
+          ...r,
+          [d.id]: err instanceof ApiError ? err.message : "Failed to load rows.",
+        }))
+      );
+  }
   const source = useMemo(() => finalDatasets.find((d) => d.id === sourceId) ?? null, [finalDatasets, sourceId]);
-  const right = useMemo(() => finalDatasets.find((d) => d.id === rightId) ?? null, [finalDatasets, rightId]);
   const sourceColumns = source?.columns ?? [];
-  const rightColumns = right?.columns ?? [];
+
+  function addJoin() {
+    setJoins((j) => [...j, emptyJoin()]);
+  }
+
+  function updateJoin(index: number, patch: Partial<JoinSpec>) {
+    setJoins((j) => j.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  }
+
+  function removeJoin(index: number) {
+    setJoins((j) => j.filter((_, i) => i !== index));
+  }
 
   function addAggregate() {
     setAggregates((a) => [...a, { function: "count", column: "", as: "" }]);
@@ -185,16 +246,20 @@ export default function ProcessPage() {
           value_name: unpivotValueName || "value",
         };
       }
-      case "join":
-        if (!rightId || !leftKey || !rightKey) return null;
+      case "join": {
+        if (joins.length === 0) return null;
+        if (joins.some((j) => !j.rightId || !j.leftKey || !j.rightKey)) return null;
         return {
-          right_dataset_id: rightId,
-          join_type: joinType,
-          left_key: leftKey,
-          right_key: rightKey,
           left_prefix: leftPrefix,
-          right_prefix: rightPrefix,
+          joins: joins.map((j) => ({
+            right_dataset_id: j.rightId,
+            join_type: j.joinType,
+            left_key: j.leftKey,
+            right_key: j.rightKey,
+            ...(j.rightPrefix ? { right_prefix: j.rightPrefix } : {}),
+          })),
         };
+      }
       default:
         return null;
     }
@@ -511,45 +576,105 @@ export default function ProcessPage() {
                 )}
 
                 {op === "join" && (
-                  <div className="flex flex-wrap gap-3">
-                    <FormField label="Join with dataset" required>
-                      <select value={rightId} onChange={(e) => setRightId(e.target.value)} className={inputClass}>
-                        <option value="">Select a dataset</option>
-                        {finalDatasets.filter((d) => d.id !== sourceId).map((d) => (
-                          <option key={d.id} value={d.id}>{d.name}</option>
-                        ))}
-                      </select>
+                  <div className="flex flex-col gap-3">
+                    <FormField label="Left column prefix (this dataset, applied once)">
+                      <input
+                        type="text"
+                        value={leftPrefix}
+                        onChange={(e) => setLeftPrefix(e.target.value)}
+                        className={`${inputClass} max-w-[10rem]`}
+                      />
                     </FormField>
-                    <FormField label="Join type">
-                      <select value={joinType} onChange={(e) => setJoinType(e.target.value)} className={inputClass}>
-                        <option value="inner">Inner</option>
-                        <option value="left">Left</option>
-                        <option value="right">Right</option>
-                        <option value="full">Full</option>
-                      </select>
-                    </FormField>
-                    <FormField label="Left key (this dataset)" required>
-                      <select value={leftKey} onChange={(e) => setLeftKey(e.target.value)} className={inputClass}>
-                        <option value="">Select a column</option>
-                        {sourceColumns.map((c) => (
-                          <option key={c.name} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
-                    </FormField>
-                    <FormField label="Right key (joined dataset)" required>
-                      <select value={rightKey} onChange={(e) => setRightKey(e.target.value)} className={inputClass} disabled={!right}>
-                        <option value="">Select a column</option>
-                        {rightColumns.map((c) => (
-                          <option key={c.name} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
-                    </FormField>
-                    <FormField label="Left column prefix">
-                      <input type="text" value={leftPrefix} onChange={(e) => setLeftPrefix(e.target.value)} className={inputClass} />
-                    </FormField>
-                    <FormField label="Right column prefix">
-                      <input type="text" value={rightPrefix} onChange={(e) => setRightPrefix(e.target.value)} className={inputClass} />
-                    </FormField>
+
+                    {joins.map((j, i) => {
+                      const jRight = finalDatasets.find((d) => d.id === j.rightId) ?? null;
+                      const jRightColumns = jRight?.columns ?? [];
+                      return (
+                        <div
+                          key={i}
+                          className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface p-2"
+                        >
+                          <FormField label={`Join with dataset ${i + 1}`} required>
+                            <select
+                              value={j.rightId}
+                              onChange={(e) => updateJoin(i, { rightId: e.target.value, rightKey: "" })}
+                              className={inputClass}
+                            >
+                              <option value="">Select a dataset</option>
+                              {finalDatasets.filter((d) => d.id !== sourceId).map((d) => (
+                                <option key={d.id} value={d.id}>{d.name}</option>
+                              ))}
+                            </select>
+                          </FormField>
+                          <FormField label="Join type">
+                            <select
+                              value={j.joinType}
+                              onChange={(e) => updateJoin(i, { joinType: e.target.value })}
+                              className={inputClass}
+                            >
+                              <option value="inner">Inner</option>
+                              <option value="left">Left</option>
+                              <option value="right">Right</option>
+                              <option value="full">Full</option>
+                            </select>
+                          </FormField>
+                          <FormField label="Left key (this dataset)" required>
+                            <select
+                              value={j.leftKey}
+                              onChange={(e) => updateJoin(i, { leftKey: e.target.value })}
+                              className={inputClass}
+                            >
+                              <option value="">Select a column</option>
+                              {sourceColumns.map((c) => (
+                                <option key={c.name} value={c.name}>{c.name}</option>
+                              ))}
+                            </select>
+                          </FormField>
+                          <FormField label="Right key" required>
+                            <select
+                              value={j.rightKey}
+                              onChange={(e) => updateJoin(i, { rightKey: e.target.value })}
+                              className={inputClass}
+                              disabled={!jRight}
+                            >
+                              <option value="">Select a column</option>
+                              {jRightColumns.map((c) => (
+                                <option key={c.name} value={c.name}>{c.name}</option>
+                              ))}
+                            </select>
+                          </FormField>
+                          <FormField label="Right column prefix">
+                            <input
+                              type="text"
+                              placeholder={`r${i}_`}
+                              value={j.rightPrefix}
+                              onChange={(e) => updateJoin(i, { rightPrefix: e.target.value })}
+                              className={`${inputClass} max-w-[8rem]`}
+                            />
+                          </FormField>
+                          {joins.length > 1 && (
+                            <Button
+                              variant="white"
+                              size="sm"
+                              className="border-0 text-foreground-muted hover:text-danger"
+                              onClick={() => removeJoin(i)}
+                            >
+                              <IconX />
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <Button variant="white" size="sm" className="self-start" onClick={addJoin}>
+                      <IconPlus />
+                      Add another dataset to join
+                    </Button>
+                    <p className="text-xs text-foreground-muted">
+                      Every join is keyed against this source dataset (a star join) --
+                      not against each other. Each joined dataset needs its own column
+                      prefix so same-named columns (e.g. every entity has a &quot;guid&quot;)
+                      don&apos;t collide in the result.
+                    </p>
                   </div>
                 )}
               </div>
@@ -574,38 +699,77 @@ export default function ProcessPage() {
                 <th className="px-4 py-3 font-medium">Rows</th>
                 <th className="px-4 py-3 font-medium">State</th>
                 <th className="px-4 py-3 font-medium">Validation</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {pager.pageItems.map((d) => {
                 const opValue = d.source_filename.split(" of ")[0];
                 const opLabel = OPS.find((o) => o.value === opValue)?.label ?? opValue;
+                const expanded = expandedId === d.id;
+                const rows = entityRows[d.id];
                 return (
-                  <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-soft">
-                    <td className="px-4 py-3">
-                      <Link href={`/datasets/${d.id}`} className="font-medium text-foreground hover:text-primary">
-                        {d.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-foreground-muted">{opLabel}</td>
-                    <td className="px-4 py-3 text-foreground-muted">
-                      {d.row_count !== null ? (
-                        d.row_count.toLocaleString()
-                      ) : d.preview_row_count !== null ? (
-                        <span title="Computed when this entity was built, from its source at that time -- not yet loaded. Run it to make this the real, final row count.">
-                          ~{d.preview_row_count.toLocaleString()}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StateBadge state={d.state} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <GateBadge state={d.gate_state} />
-                    </td>
-                  </tr>
+                  <Fragment key={d.id}>
+                    <tr className="border-b border-border last:border-0 hover:bg-surface-soft">
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleEntity(d)}
+                          className="flex items-center gap-1.5 font-medium text-foreground hover:text-primary"
+                        >
+                          <IconChevronRight
+                            className={`h-3.5 w-3.5 shrink-0 transition-transform ${expanded ? "rotate-90" : ""}`}
+                          />
+                          {d.name}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-foreground-muted">{opLabel}</td>
+                      <td className="px-4 py-3 text-foreground-muted">
+                        {d.row_count !== null ? (
+                          d.row_count.toLocaleString()
+                        ) : d.preview_row_count !== null ? (
+                          <span title="Computed when this entity was built, from its source at that time -- not yet loaded. Run it to make this the real, final row count.">
+                            ~{d.preview_row_count.toLocaleString()}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <StateBadge state={d.state} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <GateBadge state={d.gate_state} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/datasets/${d.id}`}
+                          className="text-xs font-medium text-foreground-muted hover:text-primary"
+                        >
+                          Manage →
+                        </Link>
+                      </td>
+                    </tr>
+                    {expanded && (
+                      <tr className="border-b border-border last:border-0 bg-surface-soft/40">
+                        <td colSpan={6} className="px-4 py-3">
+                          {rows === "loading" && (
+                            <p className="text-xs text-foreground-muted">Loading rows…</p>
+                          )}
+                          {typeof rows === "string" && rows !== "loading" && (
+                            <Alert>{rows}</Alert>
+                          )}
+                          {Array.isArray(rows) && (
+                            <DataGrid
+                              rows={rows}
+                              columns={d.columns.map((c) => c.name)}
+                              title={`${d.name}-preview`}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
             </tbody>

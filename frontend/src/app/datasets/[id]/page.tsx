@@ -53,7 +53,7 @@ export default function DatasetPage() {
   // placeholder (no card, no ref) until the fetch resolves, so scrolling
   // any earlier would find nothing to scroll to.
   useEffect(() => {
-    if (dataset) {
+    if (dataset?.id) {
       previewCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [dataset?.id]);

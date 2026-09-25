@@ -13,6 +13,18 @@ from .datasets import to_out
 
 router = APIRouter(prefix="/api/v1/process", tags=["process"])
 
+# Bounds how many rows build time reads into Python for schema inference.
+# Not a file upload's discovery-step sample (a small slice taken purely
+# for speed before reading a huge file): this is generous specifically to
+# keep the "infer from real data, not 50 rows that happen to look
+# all-integer" guarantee for any dataset of realistic size, while still
+# capping the worst case -- a join whose key isn't unique on the right
+# side can fan out multiplicatively, and reading every one of those rows
+# into Python is what hung a build for 90+ seconds in testing, over just
+# a ~40k-row source. The true row count still comes from a real
+# count(*), never from this sample's length -- see derived.count_rows.
+_SCHEMA_SAMPLE_LIMIT = 5000
+
 
 @router.post("", response_model=schemas.DatasetOut)
 def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depends(get_db)):
@@ -20,17 +32,12 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
 
     try:
         _, columns = derived.build_sql(db, spec)
-        rows = derived.execute_rows(db, spec)
+        sample_rows = derived.execute_rows(db, spec, limit=_SCHEMA_SAMPLE_LIMIT)
+        total_rows = derived.count_rows(db, spec)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
 
-    # Infer from every row, not a sample -- unlike a file upload's discovery
-    # step (which samples for performance before reading a huge file), the
-    # full result set is already in memory here. A 50-row sample that
-    # happens to look all-integer while later rows have decimals would
-    # otherwise type the column "integer", silently truncating those later
-    # values to NULL when the typed table is created.
-    columns_json = infer_schema(rows, columns)
+    columns_json = infer_schema(sample_rows, columns)
 
     existing_tables = {t for (t,) in db.query(models.Mapping.target_table).all()}
     table_name = target_tables.unique_table_name(
@@ -51,7 +58,7 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
         state="discovered",
         gate_state="pending",
         row_count=None,
-        preview_row_count=len(rows),
+        preview_row_count=total_rows,
         columns_json=columns_json,
     )
     db.add(dataset)

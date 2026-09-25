@@ -21,12 +21,37 @@ reimplementing them over in-memory Python lists.
 """
 
 from sqlalchemy import text as sa_text
+from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import Session
 
 from . import models, target_tables
 
 _AGG_FUNCS = {"sum", "avg", "count", "min", "max"}
 _WINDOW_FUNCS = {"row_number", "rank", "dense_rank", "sum", "avg", "count", "min", "max"}
+
+# A join whose key isn't unique on the right side can fan out
+# multiplicatively -- LIMIT bounds how many *rows* come back, but even
+# just counting or scanning to the Nth row of a truly extreme fan-out
+# (millions x millions) can itself run long. Bound the query outright
+# rather than let a bad key choice hang the request indefinitely.
+_STATEMENT_TIMEOUT_SECONDS = 15
+
+
+def _run_bounded(db: Session, sql: str):
+    """Runs one query with a hard server-side time limit, converting a
+    timeout into the same ValueError -> 422 path every other bad-spec
+    error in this module already takes (see routers/process.py)."""
+    db.execute(sa_text(f"SET LOCAL statement_timeout = '{_STATEMENT_TIMEOUT_SECONDS}s'"))
+    try:
+        return db.execute(sa_text(sql))
+    except DBAPIError as exc:
+        db.rollback()
+        raise ValueError(
+            "This produces too many rows to compute here -- check that your "
+            "join keys are actually unique on at least one side (a join "
+            "keyed on a non-unique column on both sides can multiply rows "
+            "rather than just add them)."
+        ) from exc
 
 
 def _dataset(db: Session, dataset_id: str) -> models.Dataset:
@@ -82,10 +107,7 @@ def build_sql(db: Session, spec: dict) -> tuple[str, list[str]]:
     if op == "unpivot":
         return _unpivot_sql(table, cols, args)
     if op == "join":
-        right = _dataset(db, args["right_dataset_id"])
-        right_cols = _col_map(db, right)
-        right_table = _q(_table(right))
-        return _join_sql(table, cols, right_table, right_cols, args)
+        return _join_sql(db, table, cols, args)
     raise ValueError(f"Unsupported operation: {op}")
 
 
@@ -231,35 +253,91 @@ def _unpivot_sql(table: str, cols: dict[str, str], args: dict) -> tuple[str, lis
 
 
 def _join_sql(
+    db: Session,
     left_table: str,
     left_cols: dict[str, str],
-    right_table: str,
-    right_cols: dict[str, str],
     args: dict,
 ) -> tuple[str, list[str]]:
-    join_type = str(args.get("join_type", "inner")).upper()
-    if join_type not in ("INNER", "LEFT", "RIGHT", "FULL"):
-        raise ValueError(f"Unsupported join type: {join_type}")
-    left_key = _require(left_cols, args["left_key"])
-    right_key = _require(right_cols, args["right_key"])
+    """A star join: the source table joined against one *or more* other
+    datasets, each keyed against a column on the source (not against each
+    other) -- e.g. a ledger_entries fact table joined to both ledgers and
+    vouchers in one build. Each joined dataset gets its own join type and
+    key pair, aliased r0, r1, ... in the generated SQL, and needs its own
+    distinct output prefix so same-named columns across datasets (e.g.
+    every Tally entity has a "guid") don't collide."""
+    joins = args.get("joins")
+    if not joins:
+        raise ValueError("join needs at least one dataset to join with")
+
     left_prefix = args.get("left_prefix", "l_")
-    right_prefix = args.get("right_prefix", "r_")
-
     select_parts = [f"l.{_q(p)} AS {_q(left_prefix + name)}" for name, p in left_cols.items()]
-    select_parts += [f"r.{_q(p)} AS {_q(right_prefix + name)}" for name, p in right_cols.items()]
-    output = [left_prefix + n for n in left_cols] + [right_prefix + n for n in right_cols]
+    output = [left_prefix + n for n in left_cols]
+    join_clauses: list[str] = []
+    prefixes_seen = {left_prefix}
 
-    sql = (
-        f"SELECT {', '.join(select_parts)} FROM {left_table} l "
-        f"{join_type} JOIN {right_table} r ON l.{_q(left_key)} = r.{_q(right_key)}"
-    )
+    for i, j in enumerate(joins):
+        join_type = str(j.get("join_type", "inner")).upper()
+        if join_type not in ("INNER", "LEFT", "RIGHT", "FULL"):
+            raise ValueError(f"Unsupported join type: {join_type}")
+        right = _dataset(db, j["right_dataset_id"])
+        right_cols = _col_map(db, right)
+        right_table = _q(_table(right))
+        left_key = _require(left_cols, j["left_key"])
+        right_key = _require(right_cols, j["right_key"])
+        right_prefix = j.get("right_prefix") or f"r{i}_"
+        if right_prefix in prefixes_seen:
+            raise ValueError(
+                f"Prefix '{right_prefix}' is used by more than one joined dataset -- "
+                "give each a distinct prefix"
+            )
+        prefixes_seen.add(right_prefix)
+
+        alias = f"r{i}"
+        select_parts += [f"{alias}.{_q(p)} AS {_q(right_prefix + name)}" for name, p in right_cols.items()]
+        output += [right_prefix + n for n in right_cols]
+        join_clauses.append(
+            f"{join_type} JOIN {right_table} {alias} ON l.{_q(left_key)} = {alias}.{_q(right_key)}"
+        )
+
+    sql = f"SELECT {', '.join(select_parts)} FROM {left_table} l " + " ".join(join_clauses)
     return sql, output
 
 
-def execute_rows(db: Session, spec: dict) -> list[dict[str, str | None]]:
+def execute_rows(
+    db: Session, spec: dict, limit: int | None = None
+) -> list[dict[str, str | None]]:
+    """`limit`, when given, is pushed into the SQL itself (not applied by
+    slicing the Python result after the fact) -- a join whose key isn't
+    unique on the right side can fan out multiplicatively, and this
+    query already runs synchronously inside an HTTP request (schema
+    inference at build time, /preview). Without a SQL-level limit that
+    fan-out is a real way to hang the request: it's what building a two
+    dataset join over ~40k rows did in testing, with no cap at all."""
     sql, columns = build_sql(db, spec)
-    result = db.execute(sa_text(sql))
+    if limit is not None:
+        # Bounded (schema-inference sample, /preview): a time limit too,
+        # not just a row limit -- Postgres can usually short-circuit a
+        # LIMIT through a join, but not always, and this path runs
+        # synchronously inside an HTTP request. The unlimited path
+        # (limit=None) is the real Run/load, an intentionally full,
+        # background-task read that a legitimately large dataset can take
+        # longer than this timeout to finish -- it must not be bounded.
+        sql = f"SELECT * FROM ({sql}) t LIMIT {int(limit)}"
+        result = _run_bounded(db, sql)
+    else:
+        result = db.execute(sa_text(sql))
     rows: list[dict[str, str | None]] = []
     for record in result.mappings():
         rows.append({name: (str(record[name]) if record[name] is not None else None) for name in columns})
     return rows
+
+
+def count_rows(db: Session, spec: dict) -> int:
+    """The *true* row count an op's spec produces, without pulling any of
+    the actual row data into Python -- for a join, this still has to
+    evaluate the full join server-side, but skips transferring and
+    str()-converting every column of every row, which is the expensive
+    part for a large fan-out. Time-bounded like the sampled path above,
+    for the same reason (this also runs synchronously in a request)."""
+    sql, _ = build_sql(db, spec)
+    return _run_bounded(db, f"SELECT count(*) FROM ({sql}) t").scalar_one()
