@@ -10,7 +10,7 @@ complete in-memory row set rather than a streaming chain.
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from .expressions import evaluate_control_total, evaluate_row_expression, is_control_total
+from .expressions import ExpressionError, compile_expression, evaluate_control_total, is_control_total
 from .readers.inference import parses_as
 
 
@@ -100,9 +100,15 @@ def _evaluate_rule(
                     f"sum({column}) = {total_value:g}, expected {op} {expected:g}",
                 )
         else:
-            for i, row in enumerate(rows, start=1):
-                if not evaluate_row_expression(expr, row):
-                    violating[i] = IssueSample(i, None, None, f"failed expression: {expr}")
+            try:
+                compiled = compile_expression(expr)
+            except ExpressionError as exc:
+                for i in range(1, len(rows) + 1):
+                    violating[i] = IssueSample(i, None, None, f"invalid expression: {exc}")
+            else:
+                for i, row in enumerate(rows, start=1):
+                    if not compiled.eval_bool(row):
+                        violating[i] = IssueSample(i, None, None, f"failed expression: {expr}")
 
     return violating
 

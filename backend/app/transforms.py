@@ -42,7 +42,7 @@ regression check this was built against.
 import hashlib
 from dataclasses import dataclass
 
-from .expressions import evaluate_row_expression, evaluate_row_value
+from .expressions import CompiledExpression, ExpressionError, compile_expression
 from .readers.inference import parses_as
 
 Row = dict[str, str | None]
@@ -86,14 +86,29 @@ def build_lookup_index(source_rows: list[Row], key_column: str) -> dict[str, Row
 # ---- phase 1: filter ----
 
 
+def _compile(expr: str) -> CompiledExpression | ExpressionError:
+    """Compiled once per spec, not per row -- an invalid expression still
+    fails every row it would have run against (same conservative policy
+    the row-level eval() errors used before), but the *reason* is now a
+    real parse error instead of a silent per-row exception."""
+    try:
+        return compile_expression(expr)
+    except ExpressionError as exc:
+        return exc
+
+
 def _apply_filter(rows: list[IndexedRow], specs: list[TransformSpec]) -> tuple[list[IndexedRow], list[tuple[int, Row, str]]]:
     filter_specs = [s for s in specs if s.op == "filter"]
     if not filter_specs:
         return rows, []
+    compiled = [_compile(s.args.get("expr", "")) for s in filter_specs]
     survivors: list[IndexedRow] = []
     dropped: list[tuple[int, Row, str]] = []
     for ordinal, row in rows:
-        keep = all(evaluate_row_expression(s.args.get("expr", ""), row) for s in filter_specs)
+        # An invalid filter expression (ExpressionError, not a
+        # CompiledExpression) fails every row -- same fail-closed policy
+        # a runtime eval() error used to produce, just decided once.
+        keep = all(c.eval_bool(row) if isinstance(c, CompiledExpression) else False for c in compiled)
         if keep:
             survivors.append((ordinal, row))
         else:
@@ -171,7 +186,10 @@ def _mask_value(value: str | None, args: dict) -> str | None:
 
 
 def _apply_column_ops(
-    row: Row, specs: list[TransformSpec], lookup_indexes: dict[str, dict[str, Row]]
+    row: Row,
+    specs: list[TransformSpec],
+    lookup_indexes: dict[str, dict[str, Row]],
+    compiled_derive: dict[str, CompiledExpression | ExpressionError],
 ) -> Row:
     result = dict(row)
 
@@ -193,7 +211,10 @@ def _apply_column_ops(
 
     for spec in specs:
         if spec.op == "derive" and spec.column:
-            result[spec.column] = evaluate_row_value(spec.args.get("expr", ""), result)
+            compiled = compiled_derive.get(spec.id)
+            result[spec.column] = (
+                compiled.eval_value(result) if isinstance(compiled, CompiledExpression) else None
+            )
 
     for spec in specs:
         if spec.op == "cast" and spec.column and spec.column in result:
@@ -307,8 +328,14 @@ def run_transforms(
         s for s in specs if s.op in ("rename", "lookup", "derive", "cast", "mask", "fill_default")
     ]
     if column_specs:
+        # Compiled once per spec, here -- not once per row inside
+        # _apply_column_ops, which is what running this per row below
+        # would otherwise do to every derive expression.
+        compiled_derive = {
+            s.id: _compile(s.args.get("expr", "")) for s in column_specs if s.op == "derive"
+        }
         survivors = [
-            (ordinal, _apply_column_ops(row, column_specs, lookup_indexes or {}))
+            (ordinal, _apply_column_ops(row, column_specs, lookup_indexes or {}, compiled_derive))
             for ordinal, row in survivors
         ]
 
