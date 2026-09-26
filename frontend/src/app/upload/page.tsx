@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { ApiError, uploadFile } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, IconUpload } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 const ACCEPTED = ".csv,.tsv,.xlsx,.xls,.xml";
 
 export default function UploadPage() {
+  const { can } = useAuth();
+  const canUpload = can("batch:upload");
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -25,7 +28,7 @@ export default function UploadPage() {
   }
 
   async function handleUpload() {
-    if (!file) return;
+    if (!file || !canUpload) return;
     setStatus("uploading");
     setError(null);
     try {
@@ -51,31 +54,40 @@ export default function UploadPage() {
         </p>
       </div>
 
+      {!canUpload && (
+        <Alert>Your role doesn&apos;t include upload access -- ask an Admin or Operations user to upload.</Alert>
+      )}
+
       <Card>
         <CardBody className="flex flex-col gap-4">
           <div
             onDragOver={(e) => {
               e.preventDefault();
-              setDragging(true);
+              if (canUpload) setDragging(true);
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={(e) => {
               e.preventDefault();
               setDragging(false);
+              if (!canUpload) return;
               const f = e.dataTransfer.files?.[0];
               if (f) pickFile(f);
             }}
-            onClick={() => inputRef.current?.click()}
-            className={`cursor-pointer rounded-lg border-2 border-dashed px-6 py-14 text-center transition-colors ${
-              dragging
-                ? "border-primary bg-primary-soft"
-                : "border-border bg-surface-soft hover:bg-border/30"
+            onClick={() => canUpload && inputRef.current?.click()}
+            aria-disabled={!canUpload}
+            className={`rounded-lg border-2 border-dashed px-6 py-14 text-center transition-colors ${
+              !canUpload
+                ? "cursor-not-allowed border-border bg-surface-soft opacity-60"
+                : dragging
+                ? "cursor-pointer border-primary bg-primary-soft"
+                : "cursor-pointer border-border bg-surface-soft hover:bg-border/30"
             }`}
           >
             <input
               ref={inputRef}
               type="file"
               accept={ACCEPTED}
+              disabled={!canUpload}
               className="hidden"
               onChange={(e) => pickFile(e.target.files?.[0] ?? null)}
             />
@@ -100,7 +112,7 @@ export default function UploadPage() {
 
           <div className="flex items-center gap-3">
             <Button
-              disabled={!file || status === "uploading"}
+              disabled={!file || !canUpload || status === "uploading"}
               onClick={handleUpload}
             >
               {status === "uploading" ? "Uploading…" : "Upload and discover"}

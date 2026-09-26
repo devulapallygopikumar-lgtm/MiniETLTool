@@ -8,10 +8,15 @@ from sqlalchemy.orm import Session
 
 from .. import audit, derived, models, schemas, target_tables
 from ..database import get_db
+from ..deps import get_current_user, require_permission
 from ..readers.inference import infer_schema
 from .datasets import to_out
 
-router = APIRouter(prefix="/api/v1/process", tags=["process"])
+router = APIRouter(
+    prefix="/api/v1/process",
+    tags=["process"],
+    dependencies=[Depends(require_permission("product:manage"))],
+)
 
 # Bounds how many rows build time reads into Python for schema inference.
 # Not a file upload's discovery-step sample (a small slice taken purely
@@ -27,7 +32,11 @@ _SCHEMA_SAMPLE_LIMIT = 5000
 
 
 @router.post("", response_model=schemas.DatasetOut)
-def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depends(get_db)):
+def create_derived_dataset(
+    body: schemas.NewDerivedDataset,
+    current_user: models.User = Depends(get_current_user),  # router-level dependency already checked the permission
+    db: Session = Depends(get_db),
+):
     spec = {"op": body.op, "source_dataset_id": body.source_dataset_id, "args": body.args}
 
     try:
@@ -60,6 +69,7 @@ def create_derived_dataset(body: schemas.NewDerivedDataset, db: Session = Depend
         row_count=None,
         preview_row_count=total_rows,
         columns_json=columns_json,
+        created_by=current_user.id,
     )
     db.add(dataset)
     db.flush()

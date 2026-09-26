@@ -3,9 +3,15 @@ from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
 from ..database import get_db
+from ..deps import require_permission
 from .datasets import get_dataset_or_404
 
-router = APIRouter(prefix="/api/v1/datasets/{dataset_id}/rules", tags=["rules"])
+router = APIRouter(
+    prefix="/api/v1/datasets/{dataset_id}/rules",
+    tags=["rules"],
+    dependencies=[Depends(require_permission("product:read"))],
+)
+_manage = [Depends(require_permission("validation:manage"))]
 
 
 def to_out(r: models.ValidationRule) -> schemas.ValidationRuleOut:
@@ -40,7 +46,7 @@ def list_rules(dataset_id: str, db: Session = Depends(get_db)):
     return [to_out(r) for r in rows]
 
 
-@router.post("", response_model=schemas.ValidationRuleOut, status_code=201)
+@router.post("", response_model=schemas.ValidationRuleOut, status_code=201, dependencies=_manage)
 def create_rule(dataset_id: str, body: schemas.NewRule, db: Session = Depends(get_db)):
     get_dataset_or_404(db, dataset_id)
     rule = models.ValidationRule(
@@ -60,7 +66,7 @@ def create_rule(dataset_id: str, body: schemas.NewRule, db: Session = Depends(ge
     return to_out(rule)
 
 
-@router.patch("/{rule_id}", response_model=schemas.ValidationRuleOut)
+@router.patch("/{rule_id}", response_model=schemas.ValidationRuleOut, dependencies=_manage)
 def update_rule(dataset_id: str, rule_id: str, body: schemas.RulePatch, db: Session = Depends(get_db)):
     get_dataset_or_404(db, dataset_id)
     rule = get_rule_or_404(db, dataset_id, rule_id)
@@ -76,7 +82,7 @@ def update_rule(dataset_id: str, rule_id: str, body: schemas.RulePatch, db: Sess
     return to_out(rule)
 
 
-@router.delete("/{rule_id}", status_code=204)
+@router.delete("/{rule_id}", status_code=204, dependencies=_manage)
 def delete_rule(dataset_id: str, rule_id: str, db: Session = Depends(get_db)):
     get_dataset_or_404(db, dataset_id)
     rule = get_rule_or_404(db, dataset_id, rule_id)

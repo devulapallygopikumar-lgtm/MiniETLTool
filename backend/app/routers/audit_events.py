@@ -3,11 +3,14 @@ from sqlalchemy.orm import Session
 
 from .. import models, schemas
 from ..database import get_db
+from ..deps import require_permission
 
 router = APIRouter(prefix="/api/v1/audit-events", tags=["audit"])
 
 
-@router.get("", response_model=list[schemas.AuditEventOut])
+@router.get(
+    "", response_model=list[schemas.AuditEventOut], dependencies=[Depends(require_permission("audit:read"))]
+)
 def list_audit_events(db: Session = Depends(get_db)):
     rows = db.query(models.AuditEvent).order_by(models.AuditEvent.occurred_at.desc()).limit(500).all()
     return [

@@ -1,5 +1,6 @@
 import csv
 import io
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -7,10 +8,13 @@ from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
 from ..database import get_db
-from ..runner import execute_run
+from ..deps import get_current_user, require_maker_checker, require_permission
+from ..runner import execute_run, execute_run_after_approval
 from .datasets import get_dataset_or_404
 
-router = APIRouter(prefix="/api/v1", tags=["runs"])
+router = APIRouter(
+    prefix="/api/v1", tags=["runs"], dependencies=[Depends(require_permission("batch:read"))]
+)
 
 
 def _run_out(run: models.Run, dataset_name: str) -> schemas.RunOut:
@@ -27,6 +31,9 @@ def _run_out(run: models.Run, dataset_name: str) -> schemas.RunOut:
         rows_written=run.rows_written,
         rows_rejected=run.rows_rejected,
         error=run.error,
+        created_by=run.created_by,
+        approved_by=run.approved_by,
+        approved_at=run.approved_at,
     )
 
 
@@ -37,8 +44,17 @@ def _get_run_or_404(db: Session, run_id: str) -> models.Run:
     return run
 
 
-@router.post("/datasets/{dataset_id}/run", response_model=schemas.RunOut)
-def start_run(dataset_id: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@router.post(
+    "/datasets/{dataset_id}/run",
+    response_model=schemas.RunOut,
+    dependencies=[Depends(require_permission("batch:upload"))],
+)
+def start_run(
+    dataset_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: models.User = Depends(get_current_user),  # decorator-level dependency already checked the permission
+    db: Session = Depends(get_db),
+):
     dataset = get_dataset_or_404(db, dataset_id)
     mapping = dataset.mapping
     if mapping is None:
@@ -50,6 +66,7 @@ def start_run(dataset_id: str, background_tasks: BackgroundTasks, db: Session = 
         mapping_version=mapping.version,
         state="queued",
         gate_state="pending",
+        created_by=current_user.id,
     )
     db.add(run)
     db.flush()
@@ -60,6 +77,36 @@ def start_run(dataset_id: str, background_tasks: BackgroundTasks, db: Session = 
 
     background_tasks.add_task(execute_run, run.id)
     return _run_out(run, dataset.name)
+
+
+@router.post(
+    "/runs/{run_id}/approve",
+    response_model=schemas.RunOut,
+    dependencies=[Depends(require_permission("batch:approve"))],
+)
+def approve_run(
+    run_id: str,
+    background_tasks: BackgroundTasks,
+    current_user: models.User = Depends(get_current_user),  # decorator-level dependency already checked the permission
+    db: Session = Depends(get_db),
+):
+    run = _get_run_or_404(db, run_id)
+    require_maker_checker(current_user, run.created_by)
+    if run.state != "awaiting_approval":
+        raise HTTPException(409, f"Run is '{run.state}', not awaiting approval")
+
+    dataset = db.get(models.Dataset, run.dataset_id)
+    run.approved_by = current_user.id
+    run.approved_at = datetime.now(timezone.utc)
+    run.state = "approved"
+    if dataset is not None:
+        dataset.state = "approved"
+    audit.log(db, "run.approved", "run", run.id)
+    db.commit()
+    db.refresh(run)
+
+    background_tasks.add_task(execute_run_after_approval, run.id)
+    return _run_out(run, dataset.name if dataset else "")
 
 
 @router.get("/datasets/{dataset_id}/runs", response_model=list[schemas.RunOut])

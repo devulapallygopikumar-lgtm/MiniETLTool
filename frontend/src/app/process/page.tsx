@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError, createDerivedDataset, listDatasets, previewDataset, previewLoaded } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { DataGrid } from "@/app/components/DataGrid";
@@ -71,6 +72,8 @@ function parseList(value: string): string[] {
 
 export default function ProcessPage() {
   const router = useRouter();
+  const { can } = useAuth();
+  const canManageProducts = can("product:manage");
 
   const [allDatasets, setAllDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -266,7 +269,7 @@ export default function ProcessPage() {
   }
 
   const args = buildArgs();
-  const canSubmit = Boolean(name.trim() && sourceId && args);
+  const canSubmit = Boolean(canManageProducts && name.trim() && sourceId && args);
 
   async function submit() {
     if (!args) return;
@@ -680,10 +683,15 @@ export default function ProcessPage() {
               </div>
             )}
 
-            <div>
+            <div className="flex items-center gap-3">
               <Button disabled={!canSubmit || saving} onClick={submit}>
                 {saving ? "Building…" : "Build entity"}
               </Button>
+              {!canManageProducts && (
+                <span className="text-xs text-foreground-muted">
+                  Your role can&apos;t build new entities -- Admin only.
+                </span>
+              )}
             </div>
           </div>
         </Card>

@@ -41,6 +41,9 @@ class Dataset(Base):
     columns_json: Mapped[list] = mapped_column(JsonType, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
     latest_run_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    # Who uploaded/created it (uploads.py or process.py). Nullable: existing
+    # rows predate auth and have no user to attribute to.
+    created_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
 
     mapping: Mapped["Mapping"] = relationship(back_populates="dataset", uselist=False)
     rules: Mapped[list["ValidationRule"]] = relationship(back_populates="dataset")
@@ -134,6 +137,13 @@ class Run(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Shipped empty; the hook for parameters arriving later (§20.6 #6).
     parameters_json: Mapped[dict] = mapped_column(JsonType, default=dict)
+    # Nullable: existing rows predate auth and have no user to attribute to.
+    created_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    # Maker-checker (ARCHITECTURE.md §11.1): the approver, once the gate
+    # opens and before transform/load runs -- see app/deps.py's
+    # require_maker_checker, which 403s if this would equal created_by.
+    approved_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ValidationResult(Base):
@@ -216,6 +226,39 @@ class AuditEvent(Base):
     resource_id: Mapped[str] = mapped_column(String(36))
     outcome: Mapped[str] = mapped_column(String(16), default="success")
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class User(Base):
+    """A login (ARCHITECTURE.md §11.1). Global per tenant, not scoped to
+    a sub-resource -- role is a flat, tenant-wide grant."""
+
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    tenant_id: Mapped[str] = mapped_column(String(64), default=settings.default_tenant_id, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(32))  # admin | operations | reviewer | auditor
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class RefreshToken(Base):
+    """One row per issued refresh token, hashed at rest -- never the raw
+    token, so a DB read alone can't be replayed as a session. Rotation:
+    each /auth/refresh call revokes this row and inserts a new one: if a
+    revoked token is ever presented again (reuse -- the token was stolen
+    and both the thief and the legitimate holder tried to use it), every
+    token for that user is revoked, not just this one."""
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), index=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Connection(Base):

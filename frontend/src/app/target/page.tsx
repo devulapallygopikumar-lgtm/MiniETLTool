@@ -9,6 +9,7 @@ import {
   testConnection,
   updateConnection,
 } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, FormField, IconPlus } from "@/app/components/ui";
 import type { Connection, ConnectionKind, NewConnection } from "@/app/lib/types";
 
@@ -48,6 +49,8 @@ function statusLabel(c: Connection): { text: string; className: string } {
 }
 
 export default function TargetDatasetPage() {
+  const { can } = useAuth();
+  const canManage = can("db_connection:manage");
   const [connections, setConnections] = useState<Connection[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pager = usePagination(connections);
@@ -103,6 +106,7 @@ export default function TargetDatasetPage() {
   }
 
   async function submit() {
+    if (!canManage) return;
     setSaving(true);
     setError(null);
     try {
@@ -121,6 +125,7 @@ export default function TargetDatasetPage() {
   }
 
   async function remove(c: Connection) {
+    if (!canManage) return;
     setConnections((cs) => (cs ? cs.filter((x) => x.id !== c.id) : cs));
     try {
       await deleteConnection(c.id);
@@ -161,7 +166,7 @@ export default function TargetDatasetPage() {
             A registry for now: nothing in the pipeline loads into these yet.
           </p>
         </div>
-        {!adding && (
+        {!adding && canManage && (
           <Button onClick={startAdd}>
             <IconPlus />
             Add connection
@@ -323,17 +328,21 @@ export default function TargetDatasetPage() {
                         >
                           {testingId === c.id ? "Testing…" : "Test"}
                         </Button>
-                        <Button variant="white" size="sm" onClick={() => startEdit(c)}>
-                          Edit
-                        </Button>
-                        <Button
-                          variant="white"
-                          size="sm"
-                          className="border-0 text-foreground-muted hover:text-danger"
-                          onClick={() => remove(c)}
-                        >
-                          Remove
-                        </Button>
+                        {canManage && (
+                          <>
+                            <Button variant="white" size="sm" onClick={() => startEdit(c)}>
+                              Edit
+                            </Button>
+                            <Button
+                              variant="white"
+                              size="sm"
+                              className="border-0 text-foreground-muted hover:text-danger"
+                              onClick={() => remove(c)}
+                            >
+                              Remove
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

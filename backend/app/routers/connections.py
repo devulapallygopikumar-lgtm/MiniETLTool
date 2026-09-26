@@ -9,8 +9,14 @@ from sqlalchemy.orm import Session
 
 from .. import audit, db_connections, models, schemas
 from ..database import get_db
+from ..deps import require_permission
 
-router = APIRouter(prefix="/api/v1/connections", tags=["connections"])
+router = APIRouter(
+    prefix="/api/v1/connections",
+    tags=["connections"],
+    dependencies=[Depends(require_permission("db_connection:read"))],
+)
+_manage = [Depends(require_permission("db_connection:manage"))]
 
 
 def _now() -> datetime:
@@ -47,7 +53,7 @@ def list_connections(db: Session = Depends(get_db)):
     return [to_out(c) for c in rows]
 
 
-@router.post("", response_model=schemas.ConnectionOut, status_code=201)
+@router.post("", response_model=schemas.ConnectionOut, status_code=201, dependencies=_manage)
 def create_connection(body: schemas.NewConnection, db: Session = Depends(get_db)):
     conn = models.Connection(
         name=body.name,
@@ -67,7 +73,7 @@ def create_connection(body: schemas.NewConnection, db: Session = Depends(get_db)
     return to_out(conn)
 
 
-@router.patch("/{connection_id}", response_model=schemas.ConnectionOut)
+@router.patch("/{connection_id}", response_model=schemas.ConnectionOut, dependencies=_manage)
 def update_connection(connection_id: str, body: schemas.ConnectionPatch, db: Session = Depends(get_db)):
     conn = get_connection_or_404(db, connection_id)
     patch = body.model_dump(exclude_unset=True)
@@ -81,7 +87,7 @@ def update_connection(connection_id: str, body: schemas.ConnectionPatch, db: Ses
     return to_out(conn)
 
 
-@router.delete("/{connection_id}", status_code=204)
+@router.delete("/{connection_id}", status_code=204, dependencies=_manage)
 def delete_connection(connection_id: str, db: Session = Depends(get_db)):
     conn = get_connection_or_404(db, connection_id)
     db.delete(conn)

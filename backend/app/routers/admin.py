@@ -1,6 +1,7 @@
 """Destructive, whole-system actions with no dataset-scoped equivalent.
-Single-user slice, no auth (§20.5) -- the frontend gates this behind an
-explicit yes/no confirmation before ever calling it."""
+Admin-only (tenant:manage) -- the frontend also gates this behind an
+explicit yes/no confirmation before ever calling it, but that's a
+convenience, not the actual protection."""
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import text as sa_text
@@ -8,11 +9,16 @@ from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
 from ..database import get_db
+from ..deps import require_permission
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
-@router.post("/reset", response_model=schemas.ResetSummary)
+@router.post(
+    "/reset",
+    response_model=schemas.ResetSummary,
+    dependencies=[Depends(require_permission("tenant:manage"))],
+)
 def reset_everything(db: Session = Depends(get_db)):
     """Deletes every dataset, mapping, rule, transform, run and audit event
     (and every row/table they produced) -- a genuinely empty system. Logs

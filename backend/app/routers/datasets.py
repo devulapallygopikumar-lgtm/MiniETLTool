@@ -6,9 +6,14 @@ from sqlalchemy.orm import Session
 
 from .. import audit, derived, models, schemas
 from ..database import get_db
+from ..deps import require_permission
 from ..readers.base import read_rows
 
-router = APIRouter(prefix="/api/v1/datasets", tags=["datasets"])
+router = APIRouter(
+    prefix="/api/v1/datasets",
+    tags=["datasets"],
+    dependencies=[Depends(require_permission("product:read"))],
+)
 
 _PREVIEW_MAX = 500
 
@@ -27,6 +32,7 @@ def to_out(d: models.Dataset) -> schemas.DatasetOut:
         columns=[schemas.SchemaColumn(**c) for c in d.columns_json],
         created_at=d.created_at,
         latest_run_id=d.latest_run_id,
+        created_by=d.created_by,
     )
 
 
@@ -48,7 +54,9 @@ def get_dataset(dataset_id: str, db: Session = Depends(get_db)):
     return to_out(get_dataset_or_404(db, dataset_id))
 
 
-@router.delete("/{dataset_id}", status_code=204)
+@router.delete(
+    "/{dataset_id}", status_code=204, dependencies=[Depends(require_permission("product:manage"))]
+)
 def delete_dataset(dataset_id: str, db: Session = Depends(get_db)):
     """Deletes this one dataset and everything it owns -- its mapping,
     rules, transforms, runs (and their staged/rejected/validation rows),

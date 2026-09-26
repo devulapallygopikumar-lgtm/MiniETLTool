@@ -9,6 +9,7 @@ import {
   listTransforms,
   type NewTransform,
 } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import type { Dataset, SchemaColumn, Transform, TransformOp } from "@/app/lib/types";
 import { Alert, Button, Card, CardHeader, FormField, IconPlus } from "@/app/components/ui";
 
@@ -95,6 +96,8 @@ function summarize(t: Transform): string {
 }
 
 export function TransformEditor({ datasetId, columns }: Props) {
+  const { can } = useAuth();
+  const canManage = can("format_rule:manage");
   const [transforms, setTransforms] = useState<Transform[] | null>(null);
   const [otherDatasets, setOtherDatasets] = useState<Dataset[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +137,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
   }
 
   async function submitDraft() {
+    if (!canManage) return;
     setSaving(true);
     setError(null);
     try {
@@ -149,6 +153,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
   }
 
   async function remove(transform: Transform) {
+    if (!canManage) return;
     setTransforms((ts) => (ts ? ts.filter((t) => t.id !== transform.id) : ts));
     try {
       await deleteTransform(datasetId, transform.id);
@@ -165,7 +170,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
       <CardHeader
         title="Transforms"
         actions={
-          !adding && (
+          !adding && canManage && (
             <Button variant="white" size="sm" onClick={() => setAdding(true)}>
               <IconPlus />
               Add transform
@@ -211,14 +216,16 @@ export function TransformEditor({ datasetId, columns }: Props) {
                     {summarize(t)}
                   </code>
                 </div>
-                <Button
-                  variant="white"
-                  size="sm"
-                  className="border-0 !px-0 !py-0 text-foreground-muted hover:bg-transparent hover:text-danger"
-                  onClick={() => remove(t)}
-                >
-                  Remove
-                </Button>
+                {canManage && (
+                  <Button
+                    variant="white"
+                    size="sm"
+                    className="border-0 !px-0 !py-0 text-foreground-muted hover:bg-transparent hover:text-danger"
+                    onClick={() => remove(t)}
+                  >
+                    Remove
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

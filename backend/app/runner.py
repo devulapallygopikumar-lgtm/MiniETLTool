@@ -26,7 +26,7 @@ def _now() -> datetime:
 
 
 def discover_and_create_datasets(
-    db: Session, path: Path, filename: str, format: str
+    db: Session, path: Path, filename: str, format: str, created_by: str | None = None
 ) -> list[models.Dataset]:
     # A generic .xml upload gets the curated Tally reader instead of the
     # tag-frequency heuristic when it's actually a Tally export — same
@@ -55,6 +55,7 @@ def discover_and_create_datasets(
             gate_state="pending",
             row_count=None,
             columns_json=ent.columns,
+            created_by=created_by,
         )
         db.add(dataset)
         db.flush()
@@ -172,6 +173,57 @@ def _execute_run(db: Session, run_id: str) -> None:
         db.commit()
         return
 
+    # Write the advisory reject_row rejects now, while `rows` is still in
+    # memory -- the same rows/reason this block always wrote, just moved
+    # earlier so a resume after approval (execute_run_after_approval,
+    # below) can reconstruct which ordinals were rejected purely from the
+    # DB (StagingRow minus RejectedRow) instead of needing `outcome` to
+    # have survived across a pause.
+    for i, row in enumerate(rows, start=1):
+        if i in outcome.rejected_ordinals:
+            db.add(
+                models.RejectedRow(
+                    run_id=run.id, row_ordinal=i, reason="advisory rule set to reject_row", data_json=row
+                )
+            )
+    db.commit()
+
+    # Maker-checker (ARCHITECTURE.md §11.1): pause here for a second,
+    # distinct user to approve (routers/runs.py's POST .../approve)
+    # before transform/load runs. Rows are already staged above, so
+    # resuming doesn't re-read the source.
+    run.state = "awaiting_approval"
+    dataset.state = "awaiting_approval"
+    audit.log(db, "run.awaiting_approval", "run", run.id)
+    db.commit()
+
+
+def execute_run_after_approval(run_id: str) -> None:
+    db = SessionLocal()
+    try:
+        _execute_transform_and_load(db, run_id)
+    finally:
+        db.close()
+
+
+def _execute_transform_and_load(db: Session, run_id: str) -> None:
+    run = db.get(models.Run, run_id)
+    if run is None:
+        return
+    dataset = db.get(models.Dataset, run.dataset_id)
+    mapping = db.get(models.Mapping, run.mapping_id)
+
+    staged = (
+        db.query(models.StagingRow).filter_by(run_id=run.id).order_by(models.StagingRow.row_ordinal).all()
+    )
+    rows = [s.data_json for s in staged]
+    rejected_ordinals = {
+        r.row_ordinal
+        for r in db.query(models.RejectedRow.row_ordinal)
+        .filter_by(run_id=run.id, reason="advisory rule set to reject_row")
+        .all()
+    }
+
     run.state = "transforming"
     db.commit()
 
@@ -191,17 +243,10 @@ def _execute_run(db: Session, run_id: str) -> None:
         source_rows = [r.data_json for r in db.query(models.LoadedRow).filter_by(dataset_id=source_id).all()]
         lookup_indexes[spec.id] = build_lookup_index(source_rows, match_column)
 
-    rejected_ordinals = outcome.rejected_ordinals
+    # The advisory reject_row rejects were already written to RejectedRow
+    # before the approval pause (see _execute_run above); rejected_ordinals
+    # above was reconstructed from those rows rather than re-written here.
     validation_passed = [(i, row) for i, row in enumerate(rows, start=1) if i not in rejected_ordinals]
-    for i, row in enumerate(rows, start=1):
-        if i in rejected_ordinals:
-            # Rejects keep the original values -- diagnosing a reject means
-            # seeing what was actually there, not the transformed version.
-            db.add(
-                models.RejectedRow(
-                    run_id=run.id, row_ordinal=i, reason="advisory rule set to reject_row", data_json=row
-                )
-            )
 
     result = run_transforms(validation_passed, transform_specs, dataset.columns_json, lookup_indexes)
 

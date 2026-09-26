@@ -3,12 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApiError, deleteDataset, listDatasets, resetEverything } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, IconUpload } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function DatasetsPage() {
+  const { can } = useAuth();
+  const canDeleteDatasets = can("product:manage");
+  const canReset = can("tenant:manage");
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pager = usePagination(datasets);
@@ -29,6 +33,7 @@ export default function DatasetsPage() {
   useEffect(refresh, []);
 
   async function confirmReset() {
+    if (!canReset) return;
     setResetting(true);
     setError(null);
     try {
@@ -47,6 +52,7 @@ export default function DatasetsPage() {
   }
 
   async function confirmDelete(dataset: Dataset) {
+    if (!canDeleteDatasets) return;
     setDeletingId(dataset.id);
     setError(null);
     try {
@@ -144,7 +150,7 @@ export default function DatasetsPage() {
                     <GateBadge state={d.gate_state} />
                   </td>
                   <td className="px-4 py-3">
-                    {confirmingDeleteId === d.id ? (
+                    {!canDeleteDatasets ? null : confirmingDeleteId === d.id ? (
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-foreground-muted">Delete?</span>
                         <Button
@@ -192,7 +198,10 @@ export default function DatasetsPage() {
             run — all staged, rejected and loaded rows, every typed table
             they produced, and the entire audit log. This cannot be undone.
           </p>
-          {!confirmingReset && (
+          {!canReset && (
+            <p className="text-xs text-foreground-muted italic">Admin only.</p>
+          )}
+          {canReset && !confirmingReset && (
             <Button
               variant="danger"
               size="sm"

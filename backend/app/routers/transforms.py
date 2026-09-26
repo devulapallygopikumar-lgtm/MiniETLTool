@@ -3,9 +3,15 @@ from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
 from ..database import get_db
+from ..deps import require_permission
 from .datasets import get_dataset_or_404
 
-router = APIRouter(prefix="/api/v1/datasets/{dataset_id}/transforms", tags=["transforms"])
+router = APIRouter(
+    prefix="/api/v1/datasets/{dataset_id}/transforms",
+    tags=["transforms"],
+    dependencies=[Depends(require_permission("product:read"))],
+)
+_manage = [Depends(require_permission("format_rule:manage"))]
 
 
 def to_out(t: models.Transform) -> schemas.TransformOut:
@@ -37,7 +43,7 @@ def list_transforms(dataset_id: str, db: Session = Depends(get_db)):
     return [to_out(t) for t in rows]
 
 
-@router.post("", response_model=schemas.TransformOut, status_code=201)
+@router.post("", response_model=schemas.TransformOut, status_code=201, dependencies=_manage)
 def create_transform(dataset_id: str, body: schemas.NewTransform, db: Session = Depends(get_db)):
     get_dataset_or_404(db, dataset_id)
     transform = models.Transform(
@@ -54,7 +60,7 @@ def create_transform(dataset_id: str, body: schemas.NewTransform, db: Session = 
     return to_out(transform)
 
 
-@router.patch("/{transform_id}", response_model=schemas.TransformOut)
+@router.patch("/{transform_id}", response_model=schemas.TransformOut, dependencies=_manage)
 def update_transform(
     dataset_id: str, transform_id: str, body: schemas.TransformPatch, db: Session = Depends(get_db)
 ):
@@ -72,7 +78,7 @@ def update_transform(
     return to_out(transform)
 
 
-@router.delete("/{transform_id}", status_code=204)
+@router.delete("/{transform_id}", status_code=204, dependencies=_manage)
 def delete_transform(dataset_id: str, transform_id: str, db: Session = Depends(get_db)):
     get_dataset_or_404(db, dataset_id)
     transform = get_transform_or_404(db, dataset_id, transform_id)

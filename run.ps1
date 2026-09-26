@@ -35,6 +35,15 @@ function Wait-ForUrl($url, $seconds, $label) {
     return $false
 }
 
+function Get-ListeningPid($port) {
+    try {
+        return (Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction Stop |
+            Select-Object -First 1 -ExpandProperty OwningProcess)
+    } catch {
+        return $null
+    }
+}
+
 Write-Host "== Postgres ==" -ForegroundColor Cyan
 $pg = Get-Service | Where-Object { $_.Name -like "postgresql*" -and $_.Status -eq "Running" }
 if ($pg) {
@@ -65,10 +74,27 @@ if (Test-Url "http://127.0.0.1:8000/health") {
 }
 
 Write-Host "== Frontend (Next.js) ==" -ForegroundColor Cyan
+$buildId = Join-Path $frontendDir ".next\BUILD_ID"
+$frontendPid = Get-ListeningPid 3000
+if ($frontendPid -and (Test-Path $buildId)) {
+    try {
+        $proc = Get-Process -Id $frontendPid -ErrorAction Stop
+        if ((Get-Item $buildId).LastWriteTime -gt $proc.StartTime) {
+            # `next start` serves whatever build was on disk when it launched --
+            # it doesn't notice a later `npm run build` on its own. Kill it so
+            # the check below falls through to starting a fresh one.
+            Write-Host "  running process (PID $frontendPid) predates the current build -- restarting" -ForegroundColor Yellow
+            Stop-Process -Id $frontendPid -Force
+            Start-Sleep -Seconds 1
+        }
+    } catch {
+        # process vanished between the port check and here -- fall through
+    }
+}
+
 if (Test-Url "http://localhost:3000/") {
     Write-Host "  already running at http://localhost:3000"
 } else {
-    $buildId = Join-Path $frontendDir ".next\BUILD_ID"
     if (-not (Test-Path $buildId)) {
         Write-Host "  no production build found -- running 'npm run build' first (this takes a while)..."
         Push-Location $frontendDir

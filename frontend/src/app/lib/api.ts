@@ -4,15 +4,19 @@
 
 import type {
   AuditEvent,
+  AuthMe,
   Connection,
   ConnectionTestResult,
   Dataset,
   NewConnection,
   NewDerivedDataset,
+  NewUser,
   ResetSummary,
   Run,
   RunValidation,
   Transform,
+  User,
+  UserPatch,
   ValidationIssueRow,
   ValidationRule,
 } from "./types";
@@ -28,16 +32,28 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  let res: Response;
+// The access token lives in memory only (never localStorage -- a
+// JS-readable token is exactly what an XSS payload goes looking for) and
+// is attached to every request from here, centrally. The refresh token
+// travels as an httpOnly cookie the browser sends on its own
+// (credentials: "include"); this module never sees its value.
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
+async function rawRequest(path: string, init?: RequestInit): Promise<Response> {
   try {
-    res = await fetch(`${API_BASE}${path}`, {
+    return await fetch(`${API_BASE}${path}`, {
       ...init,
+      credentials: "include",
       headers: {
         Accept: "application/json",
         ...(init?.body && !(init.body instanceof FormData)
           ? { "Content-Type": "application/json" }
           : {}),
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         ...init?.headers,
       },
     });
@@ -46,6 +62,37 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       0,
       `Could not reach the API at ${API_BASE}. Is the backend running?`
     );
+  }
+}
+
+// Concurrent 401s should trigger one refresh, not a stampede -- every
+// caller in flight shares the same in-progress attempt.
+let refreshing: Promise<{ access_token: string; user: User } | null> | null = null;
+
+export function refreshSession(): Promise<{ access_token: string; user: User } | null> {
+  if (!refreshing) {
+    refreshing = rawRequest("/api/v1/auth/refresh", { method: "POST" })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const body = await res.json();
+        setAccessToken(body.access_token);
+        return body;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
+}
+
+async function request<T>(path: string, init?: RequestInit, retried = false): Promise<T> {
+  const res = await rawRequest(path, init);
+
+  const skipAutoRefresh = path === "/api/v1/auth/login" || path === "/api/v1/auth/refresh";
+  if (res.status === 401 && !retried && !skipAutoRefresh) {
+    const refreshed = await refreshSession();
+    if (refreshed) return request<T>(path, init, true);
   }
 
   if (!res.ok) {
@@ -247,4 +294,51 @@ export function resetEverything(): Promise<ResetSummary> {
 
 export function listAuditEvents(): Promise<AuditEvent[]> {
   return request("/api/v1/audit-events");
+}
+
+// ---- Auth ----
+
+export async function login(email: string, password: string): Promise<User> {
+  const body = await request<{ access_token: string; user: User }>("/api/v1/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  setAccessToken(body.access_token);
+  return body.user;
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await request("/api/v1/auth/logout", { method: "POST" });
+  } finally {
+    setAccessToken(null);
+  }
+}
+
+export function me(): Promise<AuthMe> {
+  return request("/api/v1/auth/me");
+}
+
+// ---- Users (Admin only) ----
+
+export function listUsers(): Promise<User[]> {
+  return request("/api/v1/users");
+}
+
+export function createUser(body: NewUser): Promise<User> {
+  return request("/api/v1/users", { method: "POST", body: JSON.stringify(body) });
+}
+
+export function updateUser(userId: string, patch: UserPatch): Promise<User> {
+  return request(`/api/v1/users/${userId}`, { method: "PATCH", body: JSON.stringify(patch) });
+}
+
+export function deleteUser(userId: string): Promise<void> {
+  return request(`/api/v1/users/${userId}`, { method: "DELETE" });
+}
+
+// ---- Runs: approval ----
+
+export function approveRun(runId: string): Promise<Run> {
+  return request(`/api/v1/runs/${runId}/approve`, { method: "POST" });
 }

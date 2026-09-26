@@ -5,12 +5,16 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from .permissions import Role
+
 SourceFormat = Literal["csv", "excel", "xml", "xml-tally", "xml-tally-masters", "derived"]
 DatasetState = Literal[
     "discovered",
     "validating",
     "validation_failed",
     "validated",
+    "awaiting_approval",
+    "approved",
     "loading",
     "loaded",
     "failed",
@@ -25,6 +29,8 @@ RunState = Literal[
     "running",
     "validating",
     "validation_failed",
+    "awaiting_approval",
+    "approved",
     "transforming",
     "loading",
     "succeeded",
@@ -55,6 +61,7 @@ class DatasetOut(BaseModel):
     columns: list[SchemaColumn]
     created_at: datetime
     latest_run_id: str | None
+    created_by: str | None = None
 
 
 class UploadResult(BaseModel):
@@ -144,6 +151,9 @@ class RunOut(BaseModel):
     rows_written: int
     rows_rejected: int
     error: str | None
+    created_by: str | None = None
+    approved_by: str | None = None
+    approved_at: datetime | None = None
 
 
 class ValidationResultOut(BaseModel):
@@ -256,3 +266,56 @@ class AuditEventOut(BaseModel):
     resource_id: str
     outcome: Literal["success", "denied"]
     reason: str | None
+
+
+# ---- Auth / users (ARCHITECTURE.md §11.1) ---------------------------------
+
+
+class UserOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    email: str
+    role: Role
+    is_active: bool
+    created_at: datetime
+    # password_hash intentionally omitted -- write-only, never echoed back
+
+
+class NewUser(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    password: str
+    role: Role
+
+
+class UserPatch(BaseModel):
+    """The only place a role can change -- Admin-only (routers/users.py),
+    never through any endpoint a non-admin can reach. extra="forbid" so a
+    body can't also smuggle an id or created_at."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str | None = None
+    password: str | None = None
+    role: Role | None = None
+    is_active: bool | None = None
+
+
+class LoginRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    password: str
+
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: Literal["bearer"] = "bearer"
+    user: UserOut
+
+
+class MeOut(BaseModel):
+    user: UserOut
+    permissions: list[str]

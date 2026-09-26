@@ -4,11 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   ApiError,
+  approveRun,
   getRun,
   getRunRejectsUrl,
   getRunValidation,
   getRunValidationRows,
 } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconX, Pagination, usePagination } from "@/app/components/ui";
@@ -23,8 +25,11 @@ const TERMINAL_STATES = new Set([
 
 export default function RunPage() {
   const { id } = useParams<{ id: string }>();
+  const { user, can } = useAuth();
 
   const [run, setRun] = useState<Run | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
   const [validation, setValidation] = useState<RunValidation | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,6 +110,19 @@ export default function RunPage() {
     setRowsError(null);
   }
 
+  async function handleApprove() {
+    setApproving(true);
+    setApproveError(null);
+    try {
+      const updated = await approveRun(id);
+      setRun(updated);
+    } catch (err) {
+      setApproveError(err instanceof ApiError ? err.message : "Failed to approve run.");
+    } finally {
+      setApproving(false);
+    }
+  }
+
   if (error && !run) {
     return <Alert>{error}</Alert>;
   }
@@ -140,9 +158,21 @@ export default function RunPage() {
               polling every 2s…
             </span>
           )}
+          {run.state === "awaiting_approval" && can("batch:approve") && (
+            user?.id === run.created_by ? (
+              <span className="text-xs text-foreground-muted" title="Maker-checker: the uploader can't approve their own run">
+                Awaiting a different approver
+              </span>
+            ) : (
+              <Button size="sm" disabled={approving} onClick={handleApprove}>
+                {approving ? "Approving…" : "Approve"}
+              </Button>
+            )
+          )}
         </div>
       </div>
 
+      {approveError && <Alert>{approveError}</Alert>}
       {run.error && <Alert>{run.error}</Alert>}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

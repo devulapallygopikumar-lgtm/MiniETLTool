@@ -9,6 +9,7 @@ import {
   updateRule,
   type NewRule,
 } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import type {
   Enforcement,
   OnViolation,
@@ -58,6 +59,8 @@ function emptyDraft(): NewRule {
 }
 
 export function RuleEditor({ datasetId, columns }: Props) {
+  const { can } = useAuth();
+  const canManage = can("validation:manage");
   const [rules, setRules] = useState<ValidationRule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -86,6 +89,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
   }
 
   async function submitDraft() {
+    if (!canManage) return;
     setSaving(true);
     setError(null);
     try {
@@ -101,6 +105,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
   }
 
   async function changeEnforcement(rule: ValidationRule, enforcement: Enforcement) {
+    if (!canManage) return;
     setRules((rs) =>
       rs ? rs.map((r) => (r.id === rule.id ? { ...r, enforcement } : r)) : rs
     );
@@ -113,6 +118,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
   }
 
   async function changeOnViolation(rule: ValidationRule, on_violation: OnViolation) {
+    if (!canManage) return;
     setRules((rs) =>
       rs ? rs.map((r) => (r.id === rule.id ? { ...r, on_violation } : r)) : rs
     );
@@ -125,6 +131,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
   }
 
   async function remove(rule: ValidationRule) {
+    if (!canManage) return;
     setRules((rs) => (rs ? rs.filter((r) => r.id !== rule.id) : rs));
     try {
       await deleteRule(datasetId, rule.id);
@@ -141,7 +148,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
       <CardHeader
         title="Validation rules"
         actions={
-          !adding && (
+          !adding && canManage && (
             <Button variant="white" size="sm" onClick={() => setAdding(true)}>
               <IconPlus />
               Add rule
@@ -212,14 +219,16 @@ export function RuleEditor({ datasetId, columns }: Props) {
                   </select>
                 )}
 
-                <Button
-                  variant="white"
-                  size="sm"
-                  className="border-0 !px-0 !py-0 text-foreground-muted hover:bg-transparent hover:text-danger"
-                  onClick={() => remove(rule)}
-                >
-                  Remove
-                </Button>
+                {canManage && (
+                  <Button
+                    variant="white"
+                    size="sm"
+                    className="border-0 !px-0 !py-0 text-foreground-muted hover:bg-transparent hover:text-danger"
+                    onClick={() => remove(rule)}
+                  >
+                    Remove
+                  </Button>
+                )}
               </li>
             ))}
           </ul>

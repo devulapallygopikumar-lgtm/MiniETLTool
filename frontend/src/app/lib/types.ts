@@ -15,6 +15,8 @@ export type DatasetState =
   | "validating"
   | "validation_failed"
   | "validated"
+  | "awaiting_approval"
+  | "approved"
   | "loading"
   | "loaded"
   | "failed";
@@ -38,6 +40,7 @@ export interface Dataset {
   columns: SchemaColumn[];
   created_at: string;
   latest_run_id: string | null;
+  created_by: string | null;
 }
 
 export interface SchemaColumn {
@@ -88,6 +91,8 @@ export type RunState =
   | "running"
   | "validating"
   | "validation_failed"
+  | "awaiting_approval"
+  | "approved"
   | "transforming"
   | "loading"
   | "succeeded"
@@ -107,6 +112,9 @@ export interface Run {
   rows_written: number;
   rows_rejected: number;
   error: string | null;
+  created_by: string | null;
+  approved_by: string | null;
+  approved_at: string | null;
 }
 
 export interface ValidationResult {
@@ -203,4 +211,34 @@ export interface AuditEvent {
   resource_id: string;
   outcome: "success" | "denied";
   reason: string | null;
+}
+
+// ---- Auth / users (ARCHITECTURE.md §11.1) --------------------------------
+
+export type Role = "admin" | "operations" | "reviewer" | "auditor";
+
+export interface User {
+  id: string;
+  email: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface NewUser {
+  email: string;
+  password: string;
+  role: Role;
+}
+
+export interface UserPatch {
+  email?: string;
+  password?: string;
+  role?: Role;
+  is_active?: boolean;
+}
+
+export interface AuthMe {
+  user: User;
+  permissions: string[];
 }
