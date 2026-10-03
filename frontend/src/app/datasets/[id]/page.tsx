@@ -181,7 +181,7 @@ export default function DatasetPage() {
               )}
               {latestRun && (
                 <Link href={`/runs/${latestRun.id}`} className="self-center text-xs text-primary hover:text-primary-dark">
-                  Open latest run →
+                  Open Run #{latestRun.run_number} →
                 </Link>
               )}
             </div>

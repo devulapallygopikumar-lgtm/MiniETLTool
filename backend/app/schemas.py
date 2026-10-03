@@ -161,6 +161,7 @@ class RunOut(BaseModel):
     created_by: str | None = None
     approved_by: str | None = None
     approved_at: datetime | None = None
+    run_number: int = 0  # 1-based within its dataset; shown instead of the id
 
 
 class ValidationResultOut(BaseModel):
@@ -271,6 +272,7 @@ class AuditEventOut(BaseModel):
     action: str
     resource_type: str
     resource_id: str
+    resource_label: str | None = None  # human-readable name for resource_id
     outcome: Literal["success", "denied"]
     reason: str | None
 

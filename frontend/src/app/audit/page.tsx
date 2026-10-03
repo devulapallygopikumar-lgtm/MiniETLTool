@@ -62,7 +62,9 @@ export default function AuditPage() {
                   <td className="px-4 py-3 font-mono text-xs">{e.action}</td>
                   <td className="px-4 py-3 text-foreground-muted">
                     {e.resource_type}
-                    <span className="ml-1 text-xs">({e.resource_id})</span>
+                    {e.resource_label && (
+                      <span className="ml-1 text-foreground">· {e.resource_label}</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span

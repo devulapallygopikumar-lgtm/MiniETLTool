@@ -121,6 +121,7 @@ export interface Run {
   created_by: string | null;
   approved_by: string | null;
   approved_at: string | null;
+  run_number: number; // 1-based within its dataset -- show this, not the id
 }
 
 export interface ValidationResult {
@@ -215,6 +216,7 @@ export interface AuditEvent {
   action: string;
   resource_type: string;
   resource_id: string;
+  resource_label: string | null;
   outcome: "success" | "denied";
   reason: string | null;
 }

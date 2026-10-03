@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from .. import audit, models, schemas
 from ..database import get_db
@@ -34,6 +34,20 @@ def _run_out(run: models.Run, dataset_name: str) -> schemas.RunOut:
         created_by=run.created_by,
         approved_by=run.approved_by,
         approved_at=run.approved_at,
+        run_number=_run_number(run),
+    )
+
+
+def _run_number(run: models.Run) -> int:
+    """1-based position of this run among its dataset's runs (oldest = 1) --
+    a human-friendly name instead of the UUID."""
+    session = object_session(run)
+    if session is None:
+        return 0
+    return (
+        session.query(models.Run)
+        .filter(models.Run.dataset_id == run.dataset_id, models.Run.created_at <= run.created_at)
+        .count()
     )
 
 
@@ -170,7 +184,7 @@ def get_run_validation_rows(run_id: str, rule_id: str, db: Session = Depends(get
 
 @router.get("/runs/{run_id}/rejects")
 def download_rejects(run_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    _get_run_or_404(db, run_id, current_user)
+    run = _get_run_or_404(db, run_id, current_user)
     rows = (
         db.query(models.RejectedRow)
         .filter_by(run_id=run_id)
@@ -195,5 +209,11 @@ def download_rejects(run_id: str, db: Session = Depends(get_db), current_user: m
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": f'attachment; filename="run-{run_id}-rejects.csv"'},
+        headers={"Content-Disposition": f'attachment; filename="{_rejects_filename(db, run)}"'},
     )
+
+
+def _rejects_filename(db: Session, run: models.Run) -> str:
+    dataset = db.get(models.Dataset, run.dataset_id)
+    base = "".join(c if c.isalnum() or c in " -_." else "_" for c in (dataset.name if dataset else "dataset"))
+    return f"{base} - run {_run_number(run)} - rejects.csv"

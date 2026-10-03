@@ -143,12 +143,15 @@ export default function RunPage() {
             items={[
               { label: "Datasets", href: "/" },
               { label: run.dataset_name, href: `/datasets/${run.dataset_id}` },
-              { label: "Run" },
+              { label: `Run #${run.run_number}` },
             ]}
           />
           <h1 className="text-xl font-semibold">
-            Run <span className="font-mono text-base">{run.id}</span>
+            {run.dataset_name} — Run #{run.run_number}
           </h1>
+          <p className="text-sm text-foreground-muted">
+            Started {new Date(run.created_at).toLocaleString()}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <StateBadge state={run.state} />
