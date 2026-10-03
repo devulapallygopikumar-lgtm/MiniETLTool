@@ -21,12 +21,14 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 )
 def reset_everything(db: Session = Depends(get_db)):
     """Deletes every dataset, mapping, rule, transform, run and audit event
-    (and every row/table they produced) -- a genuinely empty system. Logs
+    (and every row/table they produced) -- a genuinely empty system, including any
+    views that depend on those tables. Logs
     one fresh system.reset event afterward, so there's still a record that
     a reset happened and when."""
     dataset_count = db.query(models.Dataset).count()
     for (table,) in db.query(models.Mapping.target_table).all():
-        db.execute(sa_text(f'DROP TABLE IF EXISTS "{table}"'))
+        # CASCADE: also drops views (e.g. reporting views) built on the table.
+        db.execute(sa_text(f'DROP TABLE IF EXISTS "{table}" CASCADE'))
 
     summary = schemas.ResetSummary(
         datasets=dataset_count,

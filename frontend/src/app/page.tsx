@@ -2,22 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError, deleteDataset, listDatasets, resetEverything } from "@/app/lib/api";
+import { ApiError, deleteDataset, listDatasets } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, IconUpload } from "@/app/components/ui";
+import { UploadPanel } from "@/app/components/UploadPanel";
+import { Alert, Button, Card, CollapsibleCard, Pagination, usePagination } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function DatasetsPage() {
   const { can } = useAuth();
-  const canDeleteDatasets = can("product:manage");
-  const canReset = can("tenant:manage");
+  const canDeleteDatasets = can("dataset:delete");
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pager = usePagination(datasets);
-  const [confirmingReset, setConfirmingReset] = useState(false);
-  const [resetting, setResetting] = useState(false);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -32,35 +30,16 @@ export default function DatasetsPage() {
 
   useEffect(refresh, []);
 
-  async function confirmReset() {
-    if (!canReset) return;
-    setResetting(true);
-    setError(null);
-    try {
-      const summary = await resetEverything();
-      setResetMessage(
-        `Reset complete: ${summary.datasets} dataset(s), ${summary.runs} run(s), ` +
-          `${summary.loaded_rows} loaded row(s) deleted.`
-      );
-      refresh();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to reset.");
-    } finally {
-      setResetting(false);
-      setConfirmingReset(false);
-    }
-  }
-
   async function confirmDelete(dataset: Dataset) {
     if (!canDeleteDatasets) return;
     setDeletingId(dataset.id);
     setError(null);
     try {
       await deleteDataset(dataset.id);
-      setResetMessage(`"${dataset.name}" deleted.`);
+      setResetMessage(`"${dataset.name}" moved to Trash.`);
       refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Failed to delete dataset.");
+      setError(err instanceof ApiError ? err.message : "Failed to move dataset to Trash.");
     } finally {
       setDeletingId(null);
       setConfirmingDeleteId(null);
@@ -68,18 +47,15 @@ export default function DatasetsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+    <div className="flex min-w-0 flex-1 flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold">Datasets</h1>
+          <h1 className="text-xl font-semibold">Uploads / Datasets</h1>
           <p className="text-sm text-foreground-muted">
             One dataset per discovered entity — sheet, table or record type.
           </p>
         </div>
-        <Button href="/upload">
-          <IconUpload />
-          Upload a source
-        </Button>
       </div>
 
       {error && <Alert>{error}</Alert>}
@@ -95,12 +71,9 @@ export default function DatasetsPage() {
       {datasets !== null && datasets.length === 0 && !error && (
         <div className="rounded-md border border-dashed border-border bg-surface px-4 py-10 text-center">
           <p className="text-sm text-foreground-muted">
-            No datasets yet. Upload a file to discover entities and generate
-            mappings automatically.
+            No datasets yet. Upload a file on the right to discover entities and
+            generate mappings automatically.
           </p>
-          <Button href="/upload" variant="outline" size="sm" className="mt-3">
-            Upload your first source →
-          </Button>
         </div>
       )}
 
@@ -110,6 +83,7 @@ export default function DatasetsPage() {
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
                 <th className="px-4 py-3 font-medium">Dataset</th>
+                <th className="px-4 py-3 font-medium">Client</th>
                 <th className="px-4 py-3 font-medium">Source</th>
                 <th className="px-4 py-3 font-medium">Rows</th>
                 <th className="px-4 py-3 font-medium">State</th>
@@ -135,6 +109,16 @@ export default function DatasetsPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-foreground-muted">
+                    {d.client_name ? (
+                      <>
+                        {d.client_name}
+                        {d.domain_name && <div className="text-xs">{d.domain_name}</div>}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-foreground-muted">
                     {d.source_filename}
                     <span className="ml-1 text-xs uppercase">
                       ({d.format})
@@ -152,7 +136,7 @@ export default function DatasetsPage() {
                   <td className="px-4 py-3">
                     {!canDeleteDatasets ? null : confirmingDeleteId === d.id ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-foreground-muted">Delete?</span>
+                        <span className="text-xs text-foreground-muted">Move to Trash?</span>
                         <Button
                           variant="danger"
                           size="sm"
@@ -177,7 +161,7 @@ export default function DatasetsPage() {
                         className="border-0 text-foreground-muted hover:text-danger"
                         onClick={() => setConfirmingDeleteId(d.id)}
                       >
-                        Delete
+                        Trash
                       </Button>
                     )}
                   </td>
@@ -189,49 +173,12 @@ export default function DatasetsPage() {
       )}
 
       {resetMessage && <Alert variant="success">{resetMessage}</Alert>}
-
-      <Card>
-        <CardHeader title="Danger zone" />
-        <div className="flex flex-col gap-3 p-4">
-          <p className="text-xs text-foreground-muted">
-            Permanently delete every dataset, mapping, rule, transform and
-            run — all staged, rejected and loaded rows, every typed table
-            they produced, and the entire audit log. This cannot be undone.
-          </p>
-          {!canReset && (
-            <p className="text-xs text-foreground-muted italic">Admin only.</p>
-          )}
-          {canReset && !confirmingReset && (
-            <Button
-              variant="danger"
-              size="sm"
-              className="self-start"
-              onClick={() => setConfirmingReset(true)}
-            >
-              Reset all data
-            </Button>
-          )}
-          {confirmingReset && (
-            <div className="flex items-center gap-3 rounded-md border border-danger/30 bg-danger/5 px-3 py-2">
-              <span className="text-sm font-medium">
-                Are you sure? This deletes{" "}
-                {datasets?.length ?? 0} dataset{datasets?.length === 1 ? "" : "s"} and all run history.
-              </span>
-              <Button variant="danger" size="sm" disabled={resetting} onClick={confirmReset}>
-                {resetting ? "Resetting…" : "Yes, reset everything"}
-              </Button>
-              <Button
-                variant="white"
-                size="sm"
-                disabled={resetting}
-                onClick={() => setConfirmingReset(false)}
-              >
-                No, cancel
-              </Button>
-            </div>
-          )}
-        </div>
-      </Card>
+    </div>
+    {can("batch:upload") && (
+      <aside className="w-full shrink-0 lg:w-96">
+        <UploadPanel onUploaded={refresh} />
+      </aside>
+    )}
     </div>
   );
 }

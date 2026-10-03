@@ -13,16 +13,28 @@ function initials(email: string): string {
   return local.slice(0, 2).toUpperCase() || "?";
 }
 
-const LINKS = [
-  { href: "/", label: "Datasets" },
-  { href: "/upload", label: "Upload" },
-  { href: "/final", label: "Final Datasets" },
-  { href: "/process", label: "Process Data" },
-  { href: "/target", label: "Target Dataset" },
-  { href: "/audit", label: "Audit" },
+interface NavItem {
+  href: string;
+  label: string;
+  show: (can: (permission: string) => boolean) => boolean;
+}
+
+// Sidebar order. "Discovered" is the page that used to be "Final Datasets";
+// "Target Connection" is the old "Target Dataset".
+const ITEMS: NavItem[] = [
+  { href: "/users", label: "Users", show: (can) => can("user:manage") },
+  { href: "/clients", label: "Clients", show: () => true },
+  { href: "/", label: "Uploads / Datasets", show: () => true },
+  { href: "/final", label: "Discovered", show: () => true },
+  { href: "/process", label: "Process Data", show: () => true },
+  { href: "/target", label: "Target Connection", show: () => true },
+  { href: "/audit", label: "Audit", show: () => true },
+  { href: "/drop", label: "Drop Datasets", show: (can) => can("dataset:delete") },
 ];
 
-function UserMenu() {
+const COLLAPSE_KEY = "meridian.sidebar.collapsed";
+
+function UserMenu({ collapsed }: { collapsed: boolean }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
@@ -44,16 +56,27 @@ function UserMenu() {
       <button
         onClick={() => setOpen((o) => !o)}
         title={`${user.email} (${user.role})`}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white transition-opacity hover:opacity-90"
+        className="flex w-full items-center gap-2 rounded-md p-1.5 text-left transition-colors hover:bg-surface-soft"
       >
-        {initials(user.email)}
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-white">
+          {initials(user.email)}
+        </span>
+        {!collapsed && (
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium text-foreground">{user.email}</span>
+            <span className="block text-xs capitalize text-foreground-muted">{user.role}</span>
+          </span>
+        )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-10 mt-2 w-56 rounded-md border border-border bg-surface p-3 shadow-lg">
+        <div className="absolute bottom-full left-0 z-20 mb-2 w-56 rounded-md border border-border bg-surface p-3 shadow-lg">
           <p className="truncate text-sm font-medium text-foreground">{user.email}</p>
           <span className="mt-1 inline-flex items-center rounded-full bg-surface-soft px-2.5 py-1 text-xs font-semibold capitalize text-foreground-muted">
             {user.role}
           </span>
+          {user.domain_name && (
+            <p className="mt-2 text-xs text-foreground-muted">Domain: {user.domain_name}</p>
+          )}
           <div className="mt-3 border-t border-border pt-3">
             <Button
               variant="white"
@@ -73,50 +96,86 @@ function UserMenu() {
 export function Nav() {
   const pathname = usePathname();
   const { user, can } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+
+  // Remembered per browser; never required for the sidebar to work.
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(COLLAPSE_KEY) === "1");
+    } catch {}
+  }, []);
+
+  function toggle() {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(COLLAPSE_KEY, c ? "0" : "1");
+      } catch {}
+      return !c;
+    });
+  }
 
   // The landing page is the product's front door, not a working screen --
   // it owns its own header/wordmark rather than wearing this app chrome.
   // The login page owns its own minimal chrome too.
-  if (pathname === "/landing" || pathname === "/login") return null;
+  if (pathname === "/landing" || pathname === "/login" || !user) return null;
 
-  const links = can("user:manage") ? [...LINKS, { href: "/users", label: "Users" }] : LINKS;
+  const items = ITEMS.filter((item) => item.show(can));
 
   return (
-    <header className="border-b border-border bg-surface">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary" />
-          Meridian
-        </Link>
-        <nav className="flex flex-1 gap-1">
-          {links.map((link) => {
-            const active =
-              link.href === "/"
-                ? pathname === "/"
-                : pathname?.startsWith(link.href);
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-primary-soft text-primary-dark"
-                    : "text-foreground-muted hover:bg-surface-soft hover:text-foreground"
+    <aside
+      className={`sticky top-0 flex h-screen shrink-0 flex-col border-r border-border bg-surface transition-[width] duration-150 ${
+        collapsed ? "w-16" : "w-60"
+      }`}
+    >
+      <div className={`flex items-center py-3 ${collapsed ? "justify-center px-2" : "justify-between px-4"}`}>
+        {!collapsed && (
+          <Link href="/" className="flex items-center gap-2 font-semibold">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary" />
+            Meridian
+          </Link>
+        )}
+        <button
+          onClick={toggle}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="flex h-8 w-8 items-center justify-center rounded-md text-foreground-muted transition-colors hover:bg-surface-soft hover:text-foreground"
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {collapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}
+          </svg>
+        </button>
+      </div>
+
+      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-2">
+        {items.map((item) => {
+          const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              title={collapsed ? item.label : undefined}
+              className={`flex items-center gap-3 rounded-md px-2.5 py-2 text-sm font-medium transition-colors ${
+                active
+                  ? "bg-primary-soft text-primary-dark"
+                  : "text-foreground-muted hover:bg-surface-soft hover:text-foreground"
+              }`}
+            >
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded text-xs font-semibold ${
+                  active ? "bg-primary text-white" : "bg-surface-soft"
                 }`}
               >
-                {link.label}
-              </Link>
-            );
-          })}
-        </nav>
-        {user ? (
-          <UserMenu />
-        ) : (
-          <Button href="/login" variant="white" size="sm">
-            Sign in
-          </Button>
-        )}
+                {item.label[0]}
+              </span>
+              {!collapsed && <span className="truncate">{item.label}</span>}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="border-t border-border p-2">
+        <UserMenu collapsed={collapsed} />
       </div>
-    </header>
+    </aside>
   );
 }

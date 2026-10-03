@@ -21,6 +21,36 @@ def _now() -> datetime:
 JsonType = JSON().with_variant(JSONB, "postgresql")
 
 
+class Domain(Base):
+    """A grouping users belong to (e.g. a business line). Admin-managed.
+    Clients live under a domain; datasets are uploaded for a client."""
+
+    __tablename__ = "domains"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    name: Mapped[str] = mapped_column(String(255), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    clients: Mapped[list["Client"]] = relationship(back_populates="domain")
+
+
+class Client(Base):
+    """Client details under a domain -- who an upload is for."""
+
+    __tablename__ = "clients"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    domain_id: Mapped[str] = mapped_column(String(36), ForeignKey("domains.id"), index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    contact_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contact_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+    domain: Mapped["Domain"] = relationship(back_populates="clients")
+
+
 class Dataset(Base):
     __tablename__ = "datasets"
 
@@ -44,7 +74,14 @@ class Dataset(Base):
     # Who uploaded/created it (uploads.py or process.py). Nullable: existing
     # rows predate auth and have no user to attribute to.
     created_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    # The client this was uploaded for (nullable: pre-domain rows have none).
+    client_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("clients.id"), nullable=True, index=True)
 
+    # Soft delete: set = in the Trash (hidden everywhere, restorable); the
+    # row and its table are only really removed by a permanent drop.
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    client: Mapped["Client | None"] = relationship()
     mapping: Mapped["Mapping"] = relationship(back_populates="dataset", uselist=False)
     rules: Mapped[list["ValidationRule"]] = relationship(back_populates="dataset")
     transforms: Mapped[list["Transform"]] = relationship(back_populates="dataset")
@@ -241,6 +278,13 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(32))  # admin | operations | reviewer | auditor
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    domain_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("domains.id"), nullable=True, index=True)
+
+    domain: Mapped["Domain | None"] = relationship()
+
+    @property
+    def domain_name(self) -> str | None:
+        return self.domain.name if self.domain else None
 
 
 class RefreshToken(Base):

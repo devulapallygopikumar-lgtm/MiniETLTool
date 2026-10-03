@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
@@ -15,9 +15,15 @@ router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
 @router.post("", response_model=schemas.UploadResult)
 async def upload_file(
     file: UploadFile = File(...),
+    client_id: str = Form(...),
     current_user: models.User = Depends(require_permission("batch:upload")),
     db: Session = Depends(get_db),
 ):
+    client = db.get(models.Client, client_id)
+    # Non-admins may only upload for clients in their own domain (404 hides other domains').
+    if client is None or (current_user.role != "admin" and client.domain_id != current_user.domain_id):
+        raise HTTPException(404, "Client not found")
+
     filename = file.filename or "upload"
     format = detect_format(filename)
     if format is None:
@@ -30,12 +36,12 @@ async def upload_file(
     path = save_upload(filename, content)
 
     try:
-        datasets = discover_and_create_datasets(db, path, filename, format, current_user.id)
+        datasets = discover_and_create_datasets(db, path, filename, format, current_user.id, client.id)
     except Exception as exc:  # noqa: BLE001 - surfaced to the user as a readable upload error
         raise HTTPException(422, f"Could not read this file: {exc}") from exc
 
     for d in datasets:
-        audit.log(db, "dataset.uploaded", "dataset", d.id, reason=f"filename={filename}")
+        audit.log(db, "dataset.uploaded", "dataset", d.id, reason=f"filename={filename} client={client.name}")
     db.commit()
 
     return schemas.UploadResult(datasets=[to_out(d) for d in datasets])

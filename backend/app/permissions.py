@@ -18,8 +18,6 @@ ROLES: tuple[Role, ...] = ("admin", "operations", "reviewer", "auditor")
 
 _ADMIN = frozenset({"admin"})
 _ADMIN_OPS = frozenset({"admin", "operations"})
-_ADMIN_REVIEWER = frozenset({"admin", "reviewer"})
-_ADMIN_OPS_REVIEWER = frozenset({"admin", "operations", "reviewer"})
 _ALL = frozenset(ROLES)
 
 PERMISSIONS: dict[str, frozenset[str]] = {
@@ -27,12 +25,17 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "user:manage": _ADMIN,
     "tenant:manage": _ADMIN,
     "role_access:manage": _ADMIN,
-    "product:manage": _ADMIN,
+    "product:manage": _ADMIN_OPS,  # process data into derived datasets
     "mapping:manage": _ADMIN,  # unwired -- no mapping editor endpoint exists
-    "validation:manage": _ADMIN,
+    "validation:manage": _ADMIN_OPS,  # create/edit rules
     "duplicate:manage": _ADMIN,  # unwired -- see module docstring
-    "format_rule:manage": _ADMIN,
+    "format_rule:manage": _ADMIN_OPS,  # create/edit transforms
     "db_connection:manage": _ADMIN,
+    # Deletes: Admin only.
+    "dataset:delete": _ADMIN,
+    "validation:delete": _ADMIN,
+    "format_rule:delete": _ADMIN,
+    "client:delete": _ADMIN,
     # Every role can read.
     "product:read": _ALL,
     "mapping:read": _ALL,
@@ -42,11 +45,12 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     # Operations (+ Admin): upload, retry.
     "batch:upload": _ADMIN_OPS,
     "batch:retry": _ADMIN_OPS,
-    # Reviewer (+ Admin): edit, approve, resolve.
-    "record:edit": _ADMIN_OPS_REVIEWER,  # unwired -- no per-row edit API exists
-    "record:approve": _ADMIN_REVIEWER,
-    "batch:approve": _ADMIN_REVIEWER,
-    "duplicate:resolve": _ADMIN_REVIEWER,  # unwired -- see module docstring
+    # Reviewer and Auditor are view-only (below Operations). Operations does
+    # every process within its domain except delete; deletes are Admin-only.
+    "record:edit": _ADMIN_OPS,  # unwired -- no per-row edit API exists
+    "record:approve": _ADMIN_OPS,
+    "batch:approve": _ADMIN_OPS,
+    "duplicate:resolve": _ADMIN_OPS,  # unwired -- see module docstring
     # Everyone can export.
     "export:create": _ALL,  # unwired -- no export-configuration endpoint exists
     "export:download": _ALL,  # unwired -- see module docstring

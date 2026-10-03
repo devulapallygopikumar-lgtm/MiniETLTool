@@ -10,6 +10,7 @@ from .. import audit, derived, models, schemas, target_tables
 from ..database import get_db
 from ..deps import get_current_user, require_permission
 from ..readers.inference import infer_schema
+from ..deps import can_access_dataset
 from .datasets import to_out
 
 router = APIRouter(
@@ -37,6 +38,14 @@ def create_derived_dataset(
     current_user: models.User = Depends(get_current_user),  # router-level dependency already checked the permission
     db: Session = Depends(get_db),
 ):
+    # Every dataset this derivation reads must be one the user can see.
+    referenced = {body.source_dataset_id}
+    referenced |= {j.get("right_dataset_id") for j in (body.args.get("joins") or []) if isinstance(j, dict)}
+    for ref_id in referenced - {None}:
+        ref = db.get(models.Dataset, ref_id)
+        if ref is None or ref.deleted_at is not None or not can_access_dataset(current_user, ref):
+            raise HTTPException(404, "Dataset not found")
+
     spec = {"op": body.op, "source_dataset_id": body.source_dataset_id, "args": body.args}
 
     try:
@@ -70,6 +79,7 @@ def create_derived_dataset(
         preview_row_count=total_rows,
         columns_json=columns_json,
         created_by=current_user.id,
+        client_id=source.client_id if source else None,
     )
     db.add(dataset)
     db.flush()

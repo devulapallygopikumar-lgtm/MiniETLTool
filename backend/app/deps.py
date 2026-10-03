@@ -52,3 +52,16 @@ def require_maker_checker(current_user: models.User, resource_created_by: str | 
     client-supplied actor."""
     if resource_created_by is not None and current_user.id == resource_created_by:
         raise HTTPException(403, "The uploader of a run cannot also approve it")
+
+
+def can_access_dataset(user: models.User, dataset: models.Dataset) -> bool:
+    """Domain visibility: admin sees everything; everyone else sees only
+    datasets of clients in their own domain (a dataset with no client is
+    admin-only). The single place to change this later."""
+    if user.role == "admin":
+        return True
+    return (
+        user.domain_id is not None
+        and dataset.client is not None
+        and dataset.client.domain_id == user.domain_id
+    )

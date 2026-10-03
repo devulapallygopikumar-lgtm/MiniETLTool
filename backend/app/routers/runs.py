@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
 from ..database import get_db
-from ..deps import get_current_user, require_maker_checker, require_permission
+from ..deps import can_access_dataset, get_current_user, require_maker_checker, require_permission
 from ..runner import execute_run, execute_run_after_approval
 from .datasets import get_dataset_or_404
 
@@ -37,9 +37,10 @@ def _run_out(run: models.Run, dataset_name: str) -> schemas.RunOut:
     )
 
 
-def _get_run_or_404(db: Session, run_id: str) -> models.Run:
+def _get_run_or_404(db: Session, run_id: str, user: models.User) -> models.Run:
     run = db.get(models.Run, run_id)
-    if run is None:
+    dataset = db.get(models.Dataset, run.dataset_id) if run else None
+    if run is None or dataset is None or dataset.deleted_at is not None or not can_access_dataset(user, dataset):
         raise HTTPException(404, "Run not found")
     return run
 
@@ -55,7 +56,7 @@ def start_run(
     current_user: models.User = Depends(get_current_user),  # decorator-level dependency already checked the permission
     db: Session = Depends(get_db),
 ):
-    dataset = get_dataset_or_404(db, dataset_id)
+    dataset = get_dataset_or_404(db, dataset_id, current_user)
     mapping = dataset.mapping
     if mapping is None:
         raise HTTPException(409, "Dataset has no mapping")
@@ -90,7 +91,7 @@ def approve_run(
     current_user: models.User = Depends(get_current_user),  # decorator-level dependency already checked the permission
     db: Session = Depends(get_db),
 ):
-    run = _get_run_or_404(db, run_id)
+    run = _get_run_or_404(db, run_id, current_user)
     require_maker_checker(current_user, run.created_by)
     if run.state != "awaiting_approval":
         raise HTTPException(409, f"Run is '{run.state}', not awaiting approval")
@@ -110,8 +111,8 @@ def approve_run(
 
 
 @router.get("/datasets/{dataset_id}/runs", response_model=list[schemas.RunOut])
-def list_runs(dataset_id: str, db: Session = Depends(get_db)):
-    dataset = get_dataset_or_404(db, dataset_id)
+def list_runs(dataset_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    dataset = get_dataset_or_404(db, dataset_id, current_user)
     rows = (
         db.query(models.Run)
         .filter_by(dataset_id=dataset_id)
@@ -122,15 +123,15 @@ def list_runs(dataset_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/runs/{run_id}", response_model=schemas.RunOut)
-def get_run(run_id: str, db: Session = Depends(get_db)):
-    run = _get_run_or_404(db, run_id)
+def get_run(run_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    run = _get_run_or_404(db, run_id, current_user)
     dataset = db.get(models.Dataset, run.dataset_id)
     return _run_out(run, dataset.name if dataset else "")
 
 
 @router.get("/runs/{run_id}/validation", response_model=schemas.RunValidationOut)
-def get_run_validation(run_id: str, db: Session = Depends(get_db)):
-    run = _get_run_or_404(db, run_id)
+def get_run_validation(run_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    run = _get_run_or_404(db, run_id, current_user)
     results = db.query(models.ValidationResult).filter_by(run_id=run_id).all()
     if not results and run.state in ("queued", "running"):
         raise HTTPException(404, "Validation results not available yet")
@@ -153,8 +154,8 @@ def get_run_validation(run_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/runs/{run_id}/validation/{rule_id}/rows", response_model=list[schemas.ValidationIssueRowOut])
-def get_run_validation_rows(run_id: str, rule_id: str, db: Session = Depends(get_db)):
-    _get_run_or_404(db, run_id)
+def get_run_validation_rows(run_id: str, rule_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    _get_run_or_404(db, run_id, current_user)
     issues = db.query(models.ValidationIssue).filter_by(run_id=run_id, rule_id=rule_id).all()
     return [
         schemas.ValidationIssueRowOut(
@@ -168,8 +169,8 @@ def get_run_validation_rows(run_id: str, rule_id: str, db: Session = Depends(get
 
 
 @router.get("/runs/{run_id}/rejects")
-def download_rejects(run_id: str, db: Session = Depends(get_db)):
-    _get_run_or_404(db, run_id)
+def download_rejects(run_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    _get_run_or_404(db, run_id, current_user)
     rows = (
         db.query(models.RejectedRow)
         .filter_by(run_id=run_id)

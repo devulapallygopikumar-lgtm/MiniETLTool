@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { ApiError, createUser, deleteUser, listUsers, updateUser } from "@/app/lib/api";
+import { ApiError, createUser, deleteUser, listDomains, listUsers, updateUser } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
 import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, FormField } from "@/app/components/ui";
-import type { Role, User } from "@/app/lib/types";
+import type { Domain, Role, User } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
 const ROLES: Role[] = ["admin", "operations", "reviewer", "auditor"];
@@ -12,6 +12,8 @@ const ROLES: Role[] = ["admin", "operations", "reviewer", "auditor"];
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [domainId, setDomainId] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const [email, setEmail] = useState("");
@@ -26,16 +28,20 @@ export default function UsersPage() {
   }
 
   useEffect(refresh, []);
+  useEffect(() => {
+    listDomains().then(setDomains).catch(() => setDomains([]));
+  }, []);
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     setCreating(true);
     setError(null);
     try {
-      await createUser({ email, password, role });
+      await createUser({ email, password, role, domain_id: domainId || null });
       setEmail("");
       setPassword("");
       setRole("operations");
+      setDomainId("");
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to create user.");
@@ -50,6 +56,15 @@ export default function UsersPage() {
       refresh();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to update role.");
+    }
+  }
+
+  async function handleDomainChange(u: User, newDomainId: string) {
+    try {
+      await updateUser(u.id, { domain_id: newDomainId || null });
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to update domain.");
     }
   }
 
@@ -78,7 +93,7 @@ export default function UsersPage() {
         <h1 className="text-xl font-semibold">Users</h1>
         <p className="text-sm text-foreground-muted">
           Four roles (ARCHITECTURE.md §11.1): Admin, Operations, Business Reviewer, Auditor.
-          Role changes take effect on that user&apos;s next request.
+          Role changes take effect on that user&apos;s next request. Everyone except Admin sees only their own uploads; a user&apos;s domain decides which clients they can upload for.
         </p>
       </div>
 
@@ -113,6 +128,14 @@ export default function UsersPage() {
                 ))}
               </select>
             </FormField>
+            <FormField label="Domain">
+              <select value={domainId} onChange={(e) => setDomainId(e.target.value)} className={inputClass}>
+                <option value="">— none —</option>
+                {domains.map((d) => (
+                  <option key={d.id} value={d.id}>{d.name}</option>
+                ))}
+              </select>
+            </FormField>
             <Button type="submit" disabled={creating}>
               {creating ? "Adding…" : "Add user"}
             </Button>
@@ -127,6 +150,7 @@ export default function UsersPage() {
             <tr className="border-b border-border text-left text-xs text-foreground-muted">
               <th className="px-4 py-3 font-medium">Email</th>
               <th className="px-4 py-3 font-medium">Role</th>
+              <th className="px-4 py-3 font-medium">Domain</th>
               <th className="px-4 py-3 font-medium">Active</th>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
@@ -145,6 +169,18 @@ export default function UsersPage() {
                   >
                     {ROLES.map((r) => (
                       <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-3">
+                  <select
+                    value={u.domain_id ?? ""}
+                    onChange={(e) => handleDomainChange(u, e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">— none —</option>
+                    {domains.map((d) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>
                 </td>

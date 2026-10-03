@@ -7,23 +7,26 @@ import type { Role } from "./types";
 
 const ADMIN: Role[] = ["admin"];
 const ADMIN_OPS: Role[] = ["admin", "operations"];
-const ADMIN_REVIEWER: Role[] = ["admin", "reviewer"];
 const ALL: Role[] = ["admin", "operations", "reviewer", "auditor"];
 
 export const PERMISSIONS: Record<string, Role[]> = {
   "user:manage": ADMIN,
   "tenant:manage": ADMIN,
-  "product:manage": ADMIN,
-  "validation:manage": ADMIN,
-  "format_rule:manage": ADMIN,
+  "product:manage": ADMIN_OPS,
+  "validation:manage": ADMIN_OPS,
+  "format_rule:manage": ADMIN_OPS,
+  "dataset:delete": ADMIN,
+  "validation:delete": ADMIN,
+  "format_rule:delete": ADMIN,
+  "client:delete": ADMIN,
   "db_connection:manage": ADMIN,
   "product:read": ALL,
   "db_connection:read": ALL,
   "batch:read": ALL,
   "batch:upload": ADMIN_OPS,
   "batch:retry": ADMIN_OPS,
-  "record:approve": ADMIN_REVIEWER,
-  "batch:approve": ADMIN_REVIEWER,
+  "record:approve": ADMIN_OPS,
+  "batch:approve": ADMIN_OPS,
   "audit:read": ["admin", "auditor"],
 };
 

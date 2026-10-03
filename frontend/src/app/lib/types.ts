@@ -41,6 +41,11 @@ export interface Dataset {
   created_at: string;
   latest_run_id: string | null;
   created_by: string | null;
+  client_id: string | null;
+  client_name: string | null;
+  domain_id: string | null;
+  domain_name: string | null;
+  deleted_at: string | null; // set = in the Trash
 }
 
 export interface SchemaColumn {
@@ -223,12 +228,15 @@ export interface User {
   role: Role;
   is_active: boolean;
   created_at: string;
+  domain_id: string | null;
+  domain_name: string | null;
 }
 
 export interface NewUser {
   email: string;
   password: string;
   role: Role;
+  domain_id?: string | null;
 }
 
 export interface UserPatch {
@@ -236,9 +244,36 @@ export interface UserPatch {
   password?: string;
   role?: Role;
   is_active?: boolean;
+  domain_id?: string | null;
 }
 
 export interface AuthMe {
   user: User;
   permissions: string[];
+}
+
+export interface Domain {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
+export interface Client {
+  id: string;
+  domain_id: string;
+  name: string;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface NewClient {
+  name: string;
+  domain_id?: string | null; // admin only; others are forced to their own domain
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  notes?: string | null;
 }

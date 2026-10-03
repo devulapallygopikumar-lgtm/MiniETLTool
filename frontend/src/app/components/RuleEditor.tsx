@@ -61,6 +61,7 @@ function emptyDraft(): NewRule {
 export function RuleEditor({ datasetId, columns }: Props) {
   const { can } = useAuth();
   const canManage = can("validation:manage");
+  const canDelete = can("validation:delete");
   const [rules, setRules] = useState<ValidationRule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -219,7 +220,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
                   </select>
                 )}
 
-                {canManage && (
+                {canDelete && (
                   <Button
                     variant="white"
                     size="sm"

@@ -30,7 +30,7 @@ export default function FinalDatasetsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Final Datasets</h1>
+        <h1 className="text-xl font-semibold">Discovered</h1>
         <p className="text-sm text-foreground-muted">
           Datasets that have completed at least one successful load — the
           output of the pipeline, not the raw upload.

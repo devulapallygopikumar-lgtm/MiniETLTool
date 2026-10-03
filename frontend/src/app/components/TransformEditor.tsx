@@ -98,6 +98,7 @@ function summarize(t: Transform): string {
 export function TransformEditor({ datasetId, columns }: Props) {
   const { can } = useAuth();
   const canManage = can("format_rule:manage");
+  const canDelete = can("format_rule:delete");
   const [transforms, setTransforms] = useState<Transform[] | null>(null);
   const [otherDatasets, setOtherDatasets] = useState<Dataset[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -216,7 +217,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
                     {summarize(t)}
                   </code>
                 </div>
-                {canManage && (
+                {canDelete && (
                   <Button
                     variant="white"
                     size="sm"

@@ -62,6 +62,11 @@ class DatasetOut(BaseModel):
     created_at: datetime
     latest_run_id: str | None
     created_by: str | None = None
+    client_id: str | None = None
+    client_name: str | None = None
+    domain_id: str | None = None
+    domain_name: str | None = None
+    deleted_at: datetime | None = None
 
 
 class UploadResult(BaseModel):
@@ -279,6 +284,8 @@ class UserOut(BaseModel):
     role: Role
     is_active: bool
     created_at: datetime
+    domain_id: str | None = None
+    domain_name: str | None = None
     # password_hash intentionally omitted -- write-only, never echoed back
 
 
@@ -288,6 +295,7 @@ class NewUser(BaseModel):
     email: str
     password: str
     role: Role
+    domain_id: str | None = None
 
 
 class UserPatch(BaseModel):
@@ -301,6 +309,7 @@ class UserPatch(BaseModel):
     password: str | None = None
     role: Role | None = None
     is_active: bool | None = None
+    domain_id: str | None = None
 
 
 class LoginRequest(BaseModel):
@@ -319,3 +328,52 @@ class TokenOut(BaseModel):
 class MeOut(BaseModel):
     user: UserOut
     permissions: list[str]
+
+
+class DomainOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    created_at: datetime
+
+
+class NewDomain(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+
+
+class ClientOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    domain_id: str
+    name: str
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    notes: str | None = None
+    created_at: datetime
+
+
+class NewClient(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    # Admin picks the domain; for anyone else it's forced to their own.
+    domain_id: str | None = None
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    notes: str | None = None
+
+
+class ClientPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str | None = None
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    notes: str | None = None

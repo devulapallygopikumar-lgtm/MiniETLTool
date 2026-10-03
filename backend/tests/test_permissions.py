@@ -40,16 +40,18 @@ def test_run_start_is_admin_and_operations_only(client, headers_by_role):
     )
 
 
-def test_run_approve_is_admin_and_reviewer_only(client, headers_by_role):
-    expect_roles(client, "POST", "/api/v1/runs/does-not-exist/approve", {"admin", "reviewer"}, headers_by_role)
+def test_run_approve_is_admin_and_operations_only(client, headers_by_role):
+    expect_roles(
+        client, "POST", "/api/v1/runs/does-not-exist/approve", {"admin", "operations"}, headers_by_role
+    )
 
 
-def test_process_create_is_admin_only(client, headers_by_role):
+def test_process_create_is_admin_and_operations_only(client, headers_by_role):
     expect_roles(
         client,
         "POST",
         "/api/v1/process",
-        {"admin"},
+        {"admin", "operations"},
         headers_by_role,
         json={"name": "x", "op": "sort", "source_dataset_id": "does-not-exist", "args": {}},
     )
@@ -63,13 +65,13 @@ def test_dataset_delete_is_admin_only(client, headers_by_role):
     expect_roles(client, "DELETE", "/api/v1/datasets/does-not-exist", {"admin"}, headers_by_role)
 
 
-def test_rules_read_is_open_but_manage_is_admin_only(client, headers_by_role):
+def test_rules_read_is_open_manage_is_ops_delete_is_admin(client, headers_by_role):
     expect_roles(client, "GET", "/api/v1/datasets/does-not-exist/rules", ALL, headers_by_role)
     expect_roles(
         client,
         "POST",
         "/api/v1/datasets/does-not-exist/rules",
-        {"admin"},
+        {"admin", "operations"},
         headers_by_role,
         json={"scope": "row", "rule": "not_null"},
     )
@@ -78,16 +80,26 @@ def test_rules_read_is_open_but_manage_is_admin_only(client, headers_by_role):
     )
 
 
-def test_transforms_read_is_open_but_manage_is_admin_only(client, headers_by_role):
+def test_transforms_read_is_open_manage_is_ops_delete_is_admin(client, headers_by_role):
     expect_roles(client, "GET", "/api/v1/datasets/does-not-exist/transforms", ALL, headers_by_role)
     expect_roles(
         client,
         "POST",
         "/api/v1/datasets/does-not-exist/transforms",
-        {"admin"},
+        {"admin", "operations"},
         headers_by_role,
         json={"op": "dedupe"},
     )
+
+
+def test_transform_delete_is_admin_only(client, headers_by_role):
+    expect_roles(
+        client, "DELETE", "/api/v1/datasets/x/transforms/y", {"admin"}, headers_by_role
+    )
+
+
+def test_client_delete_is_admin_only(client, headers_by_role):
+    expect_roles(client, "DELETE", "/api/v1/clients/does-not-exist", {"admin"}, headers_by_role)
 
 
 def test_connections_read_is_open_but_manage_is_admin_only(client, headers_by_role):

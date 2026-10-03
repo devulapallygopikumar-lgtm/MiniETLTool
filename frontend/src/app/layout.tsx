@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Nav } from "@/app/components/Nav";
+import { AuthGate } from "@/app/components/AuthGate";
 import { AuthProvider } from "@/app/lib/auth-context";
 import "./globals.css";
 
@@ -25,11 +26,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex">
         <AuthProvider>
           <Nav />
-          <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-            {children}
+          <main className="min-w-0 flex-1 px-6 py-8">
+            <div className="mx-auto w-full max-w-7xl">
+              <AuthGate>{children}</AuthGate>
+            </div>
           </main>
         </AuthProvider>
       </body>

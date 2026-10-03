@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from .. import audit, models, schemas
 from ..database import get_db
-from ..deps import require_permission
+from ..deps import get_current_user, require_permission
 from .datasets import get_dataset_or_404
 
 router = APIRouter(
@@ -12,6 +12,7 @@ router = APIRouter(
     dependencies=[Depends(require_permission("product:read"))],
 )
 _manage = [Depends(require_permission("validation:manage"))]
+_delete = [Depends(require_permission("validation:delete"))]
 
 
 def to_out(r: models.ValidationRule) -> schemas.ValidationRuleOut:
@@ -35,8 +36,8 @@ def get_rule_or_404(db: Session, dataset_id: str, rule_id: str) -> models.Valida
 
 
 @router.get("", response_model=list[schemas.ValidationRuleOut])
-def list_rules(dataset_id: str, db: Session = Depends(get_db)):
-    get_dataset_or_404(db, dataset_id)
+def list_rules(dataset_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    get_dataset_or_404(db, dataset_id, current_user)
     rows = (
         db.query(models.ValidationRule)
         .filter_by(dataset_id=dataset_id)
@@ -47,8 +48,8 @@ def list_rules(dataset_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=schemas.ValidationRuleOut, status_code=201, dependencies=_manage)
-def create_rule(dataset_id: str, body: schemas.NewRule, db: Session = Depends(get_db)):
-    get_dataset_or_404(db, dataset_id)
+def create_rule(dataset_id: str, body: schemas.NewRule, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    get_dataset_or_404(db, dataset_id, current_user)
     rule = models.ValidationRule(
         dataset_id=dataset_id,
         scope=body.scope,
@@ -67,8 +68,8 @@ def create_rule(dataset_id: str, body: schemas.NewRule, db: Session = Depends(ge
 
 
 @router.patch("/{rule_id}", response_model=schemas.ValidationRuleOut, dependencies=_manage)
-def update_rule(dataset_id: str, rule_id: str, body: schemas.RulePatch, db: Session = Depends(get_db)):
-    get_dataset_or_404(db, dataset_id)
+def update_rule(dataset_id: str, rule_id: str, body: schemas.RulePatch, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    get_dataset_or_404(db, dataset_id, current_user)
     rule = get_rule_or_404(db, dataset_id, rule_id)
     patch = body.model_dump(exclude_unset=True)
     for key, value in patch.items():
@@ -82,9 +83,9 @@ def update_rule(dataset_id: str, rule_id: str, body: schemas.RulePatch, db: Sess
     return to_out(rule)
 
 
-@router.delete("/{rule_id}", status_code=204, dependencies=_manage)
-def delete_rule(dataset_id: str, rule_id: str, db: Session = Depends(get_db)):
-    get_dataset_or_404(db, dataset_id)
+@router.delete("/{rule_id}", status_code=204, dependencies=_delete)
+def delete_rule(dataset_id: str, rule_id: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    get_dataset_or_404(db, dataset_id, current_user)
     rule = get_rule_or_404(db, dataset_id, rule_id)
     db.delete(rule)
     audit.log(db, "rule.deleted", "validation_rule", rule_id)

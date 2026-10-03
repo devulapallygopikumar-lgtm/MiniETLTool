@@ -10,6 +10,7 @@ import type {
   Dataset,
   NewConnection,
   NewDerivedDataset,
+  NewClient,
   NewUser,
   ResetSummary,
   Run,
@@ -17,6 +18,8 @@ import type {
   Transform,
   User,
   UserPatch,
+  Client,
+  Domain,
   ValidationIssueRow,
   ValidationRule,
 } from "./types";
@@ -142,9 +145,10 @@ export interface UploadResult {
   datasets: Dataset[];
 }
 
-export function uploadFile(file: File): Promise<UploadResult> {
+export function uploadFile(file: File, clientId: string): Promise<UploadResult> {
   const form = new FormData();
   form.append("file", file);
+  form.append("client_id", clientId);
   return request("/api/v1/uploads", { method: "POST", body: form });
 }
 
@@ -341,4 +345,48 @@ export function deleteUser(userId: string): Promise<void> {
 
 export function approveRun(runId: string): Promise<Run> {
   return request(`/api/v1/runs/${runId}/approve`, { method: "POST" });
+}
+
+// ---- Domains & clients ----
+
+export function listDomains(): Promise<Domain[]> {
+  return request("/api/v1/domains");
+}
+
+export function createDomain(name: string): Promise<Domain> {
+  return request("/api/v1/domains", { method: "POST", body: JSON.stringify({ name }) });
+}
+
+export function deleteDomain(id: string): Promise<void> {
+  return request(`/api/v1/domains/${id}`, { method: "DELETE" });
+}
+
+export function listClients(): Promise<Client[]> {
+  return request("/api/v1/clients");
+}
+
+export function createClient(body: NewClient): Promise<Client> {
+  return request("/api/v1/clients", { method: "POST", body: JSON.stringify(body) });
+}
+
+export function deleteClient(id: string): Promise<void> {
+  return request(`/api/v1/clients/${id}`, { method: "DELETE" });
+}
+
+// ---- Trash / drop ----
+
+export function listTrash(): Promise<Dataset[]> {
+  return request("/api/v1/datasets/trash");
+}
+
+export function restoreDataset(id: string): Promise<Dataset> {
+  return request(`/api/v1/datasets/${id}/restore`, { method: "POST" });
+}
+
+export function dropDatasetPermanently(id: string): Promise<void> {
+  return request(`/api/v1/datasets/${id}/permanent`, { method: "DELETE" });
+}
+
+export function emptyTrash(): Promise<{ dropped: number }> {
+  return request("/api/v1/datasets/trash/empty", { method: "POST" });
 }

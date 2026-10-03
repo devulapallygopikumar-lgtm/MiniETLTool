@@ -25,8 +25,29 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _unique_dataset_name(db: Session, filename: str, entity_name: str, multi: bool) -> str:
+    """Dataset name = the uploaded file's name (no extension); a multi-entity
+    file (several sheets/record types) appends the entity so they stay distinct.
+    Re-uploading a name that already exists gets a version suffix: v2, v3, ..."""
+    base = Path(filename).stem
+    if multi:
+        base = f"{base} - {entity_name}"
+    taken = {n for (n,) in db.query(models.Dataset.name).filter(models.Dataset.name.like(f"{base}%")).all()}
+    if base not in taken:
+        return base
+    version = 2
+    while f"{base} v{version}" in taken:
+        version += 1
+    return f"{base} v{version}"
+
+
 def discover_and_create_datasets(
-    db: Session, path: Path, filename: str, format: str, created_by: str | None = None
+    db: Session,
+    path: Path,
+    filename: str,
+    format: str,
+    created_by: str | None = None,
+    client_id: str | None = None,
 ) -> list[models.Dataset]:
     # A generic .xml upload gets the curated Tally reader instead of the
     # tag-frequency heuristic when it's actually a Tally export — same
@@ -47,7 +68,7 @@ def discover_and_create_datasets(
     datasets: list[models.Dataset] = []
     for ent in entities:
         dataset = models.Dataset(
-            name=ent.entity_name,
+            name=_unique_dataset_name(db, filename, ent.entity_name, len(entities) > 1),
             source_filename=filename,
             format=format,
             entity_name=ent.entity_name,
@@ -56,6 +77,7 @@ def discover_and_create_datasets(
             row_count=None,
             columns_json=ent.columns,
             created_by=created_by,
+            client_id=client_id,
         )
         db.add(dataset)
         db.flush()

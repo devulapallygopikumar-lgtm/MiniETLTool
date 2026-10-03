@@ -1,8 +1,21 @@
 from app import models
 
 
-def _awaiting_approval_run(db_session, created_by: str) -> models.Run:
+def _awaiting_approval_run(db_session, created_by: str, user=None) -> models.Run:
+    """`user`, if given, is put in a domain that owns the dataset's client --
+    domain visibility is what lets a non-admin reach the run at all."""
+    client_id = None
+    if user is not None:
+        domain = models.Domain(name=f"d-{created_by}")
+        db_session.add(domain)
+        db_session.flush()
+        user.domain_id = domain.id
+        client = models.Client(domain_id=domain.id, name="c")
+        db_session.add(client)
+        db_session.flush()
+        client_id = client.id
     dataset = models.Dataset(
+        client_id=client_id,
         name="test dataset",
         source_filename="test.csv",
         format="csv",
@@ -42,16 +55,16 @@ def _awaiting_approval_run(db_session, created_by: str) -> models.Run:
     return run
 
 
-def test_uploader_cannot_approve_their_own_run(client, db_session, reviewer_user, reviewer_headers):
-    run = _awaiting_approval_run(db_session, created_by=reviewer_user.id)
+def test_uploader_cannot_approve_their_own_run(client, db_session, admin_user, admin_headers):
+    run = _awaiting_approval_run(db_session, created_by=admin_user.id)
 
-    resp = client.post(f"/api/v1/runs/{run.id}/approve", headers=reviewer_headers)
+    resp = client.post(f"/api/v1/runs/{run.id}/approve", headers=admin_headers)
 
     assert resp.status_code == 403
 
 
-def test_a_different_approver_can_approve(client, db_session, reviewer_user, admin_user, admin_headers):
-    run = _awaiting_approval_run(db_session, created_by=reviewer_user.id)
+def test_a_different_approver_can_approve(client, db_session, operations_user, admin_user, admin_headers):
+    run = _awaiting_approval_run(db_session, created_by=operations_user.id)
 
     resp = client.post(f"/api/v1/runs/{run.id}/approve", headers=admin_headers)
 
@@ -60,13 +73,10 @@ def test_a_different_approver_can_approve(client, db_session, reviewer_user, adm
     assert body["approved_by"] == admin_user.id
 
 
-def test_operations_lacks_the_approve_permission_regardless_of_ownership(
-    client, db_session, operations_user, operations_headers
-):
-    run = _awaiting_approval_run(db_session, created_by=operations_user.id)
+def test_operations_cannot_approve_their_own_run(client, db_session, operations_user, operations_headers):
+    run = _awaiting_approval_run(db_session, created_by=operations_user.id, user=operations_user)
 
     resp = client.post(f"/api/v1/runs/{run.id}/approve", headers=operations_headers)
 
-    # Operations doesn't hold batch:approve at all -- 403 here is the plain
-    # permission check, not (only) maker-checker.
+    # Operations holds batch:approve, so this 403 is the maker-checker rule.
     assert resp.status_code == 403
