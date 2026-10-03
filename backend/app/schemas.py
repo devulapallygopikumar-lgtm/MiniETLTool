@@ -67,6 +67,8 @@ class DatasetOut(BaseModel):
     domain_id: str | None = None
     domain_name: str | None = None
     deleted_at: datetime | None = None
+    # Rows the latest run read (see routers/datasets._latest_rows_read).
+    latest_rows_read: int | None = None
 
 
 class UploadResult(BaseModel):

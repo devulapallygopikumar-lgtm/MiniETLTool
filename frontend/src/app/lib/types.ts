@@ -46,6 +46,7 @@ export interface Dataset {
   domain_id: string | null;
   domain_name: string | null;
   deleted_at: string | null; // set = in the Trash
+  latest_rows_read: number | null; // rows the latest run read, even if not loaded
 }
 
 export interface SchemaColumn {

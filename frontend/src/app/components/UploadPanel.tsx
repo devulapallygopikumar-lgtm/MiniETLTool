@@ -11,7 +11,13 @@ const ACCEPTED = ".csv,.tsv,.xlsx,.xls,.xml";
 /** Pick a client, drop a file, discover datasets. `onUploaded` lets the page
  *  beside it refresh its grid. Callers only render this for users who can
  *  upload; the backend re-checks that on every request. */
-export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
+export function UploadPanel({
+  onUploaded,
+  onCollapse,
+}: {
+  onUploaded?: (created: Dataset[]) => void;
+  onCollapse?: () => void;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -43,7 +49,7 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
       setCreated(result.datasets);
       setStatus("done");
       setFile(null);
-      onUploaded?.();
+      onUploaded?.(result.datasets);
     } catch (err) {
       setStatus("error");
       setError(err instanceof ApiError ? err.message : "Upload failed. Try again.");
@@ -52,7 +58,23 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
 
   return (
     <Card>
-      <CardHeader title="Upload a source" />
+      <CardHeader
+        title="Upload a source"
+        actions={
+          onCollapse && (
+            <button
+              onClick={onCollapse}
+              aria-label="Collapse upload panel"
+              title="Collapse"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-foreground-muted hover:bg-surface-soft hover:text-foreground"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </button>
+          )
+        }
+      />
       <CardBody className="flex flex-col gap-4">
         <p className="text-xs text-foreground-muted">
           CSV, Excel or XML. Each sheet, table or record type discovered becomes its own dataset.
@@ -131,23 +153,9 @@ export function UploadPanel({ onUploaded }: { onUploaded?: () => void }) {
         {error && <Alert>{error}</Alert>}
 
         {status === "done" && (
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium text-success">
-              {created.length} dataset{created.length === 1 ? "" : "s"} created
-            </span>
-            <ul className="flex flex-col gap-1">
-              {created.map((d) => (
-                <li key={d.id}>
-                  <Link
-                    href={`/datasets/${d.id}`}
-                    className="text-sm font-medium text-primary hover:text-primary-dark"
-                  >
-                    {d.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <span className="text-sm font-medium text-success">
+            {created.length} dataset{created.length === 1 ? "" : "s"} added to the grid.
+          </span>
         )}
       </CardBody>
     </Card>

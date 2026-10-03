@@ -3,7 +3,7 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import text as sa_text
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 
 from .. import audit, derived, models, schemas
 from ..database import get_db
@@ -39,7 +39,18 @@ def to_out(d: models.Dataset) -> schemas.DatasetOut:
         domain_id=d.client.domain_id if d.client else None,
         domain_name=d.client.domain.name if d.client else None,
         deleted_at=d.deleted_at,
+        latest_rows_read=_latest_rows_read(d),
     )
+
+
+def _latest_rows_read(d: models.Dataset) -> int | None:
+    """Rows the latest run read from the source -- a count that exists
+    before anything is loaded (row_count stays NULL until a load)."""
+    session = object_session(d)
+    if not d.latest_run_id or session is None:
+        return None
+    run = session.get(models.Run, d.latest_run_id)
+    return run.rows_read if run else None
 
 
 def get_dataset_or_404(db: Session, dataset_id: str, user: models.User) -> models.Dataset:

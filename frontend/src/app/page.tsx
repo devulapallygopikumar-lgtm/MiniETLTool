@@ -2,33 +2,86 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ApiError, deleteDataset, listDatasets } from "@/app/lib/api";
+import { ApiError, deleteDataset, listDatasets, runDataset } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { UploadPanel } from "@/app/components/UploadPanel";
+import { UploadAside } from "@/app/components/UploadAside";
 import { Alert, Button, Card, CollapsibleCard, Pagination, usePagination } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function DatasetsPage() {
   const { can } = useAuth();
   const canDeleteDatasets = can("dataset:delete");
+  const canRun = can("batch:upload");
   const [datasets, setDatasets] = useState<Dataset[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const pager = usePagination(datasets);
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [confirmingBulkTrash, setConfirmingBulkTrash] = useState(false);
 
   function refresh() {
     listDatasets()
-      .then(setDatasets)
+      .then((rows) => {
+        setDatasets(rows);
+        // Drop selections for datasets that no longer exist (trashed, etc.).
+        setSelected((prev) => new Set([...prev].filter((id) => rows.some((r) => r.id === id))));
+      })
       .catch((err: unknown) =>
         setError(err instanceof ApiError ? err.message : "Failed to load datasets.")
       );
   }
 
   useEffect(refresh, []);
+
+  const allIds = (datasets ?? []).map((d) => d.id);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(allIds));
+  }
+
+  async function runSelected() {
+    if (!canRun || selected.size === 0) return;
+    setBulkBusy(true);
+    setError(null);
+    const results = await Promise.allSettled([...selected].map((id) => runDataset(id)));
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setResetMessage(
+      `Started ${results.length - failed} run${results.length - failed === 1 ? "" : "s"}` +
+        (failed ? ` — ${failed} could not start.` : ".")
+    );
+    setBulkBusy(false);
+    refresh();
+  }
+
+  async function trashSelected() {
+    if (!canDeleteDatasets || selected.size === 0) return;
+    setBulkBusy(true);
+    setError(null);
+    const results = await Promise.allSettled([...selected].map((id) => deleteDataset(id)));
+    const failed = results.filter((r) => r.status === "rejected").length;
+    setResetMessage(
+      `Moved ${results.length - failed} dataset${results.length - failed === 1 ? "" : "s"} to Trash` +
+        (failed ? ` — ${failed} failed.` : ".")
+    );
+    setBulkBusy(false);
+    setConfirmingBulkTrash(false);
+    refresh();
+  }
 
   async function confirmDelete(dataset: Dataset) {
     if (!canDeleteDatasets) return;
@@ -77,11 +130,49 @@ export default function DatasetsPage() {
         </div>
       )}
 
+      {selected.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-md border border-border bg-surface px-4 py-2 text-sm">
+          <span className="font-medium">{selected.size} selected</span>
+          {canRun && (
+            <Button size="sm" disabled={bulkBusy} onClick={runSelected}>
+              {bulkBusy ? "Working…" : "Run selected"}
+            </Button>
+          )}
+          {canDeleteDatasets &&
+            (confirmingBulkTrash ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="text-xs text-foreground-muted">Move {selected.size} to Trash?</span>
+                <Button variant="danger" size="sm" disabled={bulkBusy} onClick={trashSelected}>
+                  Yes
+                </Button>
+                <Button variant="white" size="sm" onClick={() => setConfirmingBulkTrash(false)}>
+                  No
+                </Button>
+              </span>
+            ) : (
+              <Button variant="white" size="sm" onClick={() => setConfirmingBulkTrash(true)}>
+                Move to Trash
+              </Button>
+            ))}
+          <Button variant="white" size="sm" onClick={() => setSelected(new Set())}>
+            Clear
+          </Button>
+        </div>
+      )}
+
       {datasets !== null && datasets.length > 0 && (
         <CollapsibleCard title={`${datasets.length} dataset${datasets.length === 1 ? "" : "s"}`} footer={<Pagination pager={pager} />}>
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all datasets"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                  />
+                </th>
                 <th className="px-4 py-3 font-medium">Dataset</th>
                 <th className="px-4 py-3 font-medium">Client</th>
                 <th className="px-4 py-3 font-medium">Source</th>
@@ -95,8 +186,18 @@ export default function DatasetsPage() {
               {pager.pageItems.map((d) => (
                 <tr
                   key={d.id}
-                  className="border-b border-border last:border-0 hover:bg-surface-soft"
+                  className={`border-b border-border last:border-0 hover:bg-surface-soft ${
+                    selected.has(d.id) ? "bg-primary-soft/40" : ""
+                  }`}
                 >
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${d.name}`}
+                      checked={selected.has(d.id)}
+                      onChange={() => toggleOne(d.id)}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <Link
                       href={`/datasets/${d.id}`}
@@ -120,12 +221,13 @@ export default function DatasetsPage() {
                   </td>
                   <td className="px-4 py-3 text-foreground-muted">
                     {d.source_filename}
-                    <span className="ml-1 text-xs uppercase">
-                      ({d.format})
-                    </span>
                   </td>
                   <td className="px-4 py-3 text-foreground-muted">
-                    {d.row_count ?? "—"}
+                    {d.row_count ?? (d.latest_rows_read != null ? (
+                      <span title="Read by the latest run; not loaded yet">{d.latest_rows_read}*</span>
+                    ) : (
+                      "—"
+                    ))}
                   </td>
                   <td className="px-4 py-3">
                     <StateBadge state={d.state} />
@@ -175,9 +277,12 @@ export default function DatasetsPage() {
       {resetMessage && <Alert variant="success">{resetMessage}</Alert>}
     </div>
     {can("batch:upload") && (
-      <aside className="w-full shrink-0 lg:w-96">
-        <UploadPanel onUploaded={refresh} />
-      </aside>
+      <UploadAside
+        onUploaded={(created) => {
+          setSelected(new Set(created.map((d) => d.id)));
+          refresh();
+        }}
+      />
     )}
     </div>
   );
