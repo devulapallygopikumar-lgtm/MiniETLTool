@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from .permissions import Role
 
@@ -396,11 +396,25 @@ class TargetColumnOut(BaseModel):
     required: bool  # NOT NULL with no default -- must be mapped to load
 
 
+class GenerateSpec(BaseModel):
+    """Generate a target column's value per row instead of reading a source
+    field. See id_generators.py."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["uuid", "sequence"]
+    prefix: str = Field("", max_length=32)  # sequence only
+    start: int = Field(1, ge=0)  # sequence only
+    step: int = Field(1, ge=1)  # sequence only
+    pad: int = Field(0, ge=0, le=20)  # sequence only: zero-pad width
+
+
 class FieldMapItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     target: str
     source: str | None = None
+    generate: GenerateSpec | None = None  # mutually exclusive with `source`
 
 
 class NewTargetMapping(BaseModel):

@@ -66,6 +66,8 @@ def save_mapping(
         if f.target in seen:
             raise HTTPException(422, f"Target column {f.target} is mapped twice")
         seen.add(f.target)
+        if f.source is not None and f.generate is not None:
+            raise HTTPException(422, f"Target column {f.target} can't have both a source field and a generator")
         if f.source is not None and f.source not in source_fields:
             raise HTTPException(422, f"{dataset.name} has no field named {f.source}")
 
@@ -96,7 +98,7 @@ def save_mapping(
         m.fields_json = fields
         m.updated_at = datetime.now(timezone.utc)
         action = "target_mapping.updated"
-    mapped = sum(1 for f in fields if f["source"])
+    mapped = sum(1 for f in fields if f["source"] or f["generate"])
     audit.log(db, action, "target_mapping", m.id,
               reason=f"{dataset.name} -> {body.target_schema}.{body.target_table} ({mapped} fields)")
     db.commit()

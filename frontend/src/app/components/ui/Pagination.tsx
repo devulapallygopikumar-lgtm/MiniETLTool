@@ -10,7 +10,7 @@
 //   ...pager.pageItems.map(...)
 //   <Pagination pager={pager} />
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { IconChevronRight } from "./icons";
 
 export const ALL_ROWS = 0; // page size meaning "every row on one page"
@@ -102,17 +102,19 @@ export function SortTh<T>({
   col,
   value,
   className = "px-4 py-3 font-medium",
+  style,
   children,
 }: {
   pager: Pager<T>;
   col: string;
   value?: (item: T) => unknown;
   className?: string;
+  style?: CSSProperties;
   children: ReactNode;
 }) {
   const active = pager.sortKey === col;
   return (
-    <th className={className} aria-sort={active ? (pager.sortDir === "asc" ? "ascending" : "descending") : "none"}>
+    <th className={className} style={style} aria-sort={active ? (pager.sortDir === "asc" ? "ascending" : "descending") : "none"}>
       <button
         type="button"
         onClick={() => pager.toggleSort(col, value)}

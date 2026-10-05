@@ -30,6 +30,7 @@ const ITEMS: NavItem[] = [
   { href: "/process", label: "New Entity", show: () => true },
   { href: "/target", label: "Target Connection", show: () => true },
   { href: "/mapping", label: "Mapping", show: () => true },
+  { href: "/loan-details", label: "Loan details", show: () => true },
   { href: "/audit", label: "Audit", show: () => true },
   { href: "/drop", label: "Drop Datasets", show: (can) => can("dataset:delete") },
 ];

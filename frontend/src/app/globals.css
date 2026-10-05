@@ -62,3 +62,29 @@ body {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Printing a single section: add body.print-master, then mark the section
+   with .print-area. Colours are forced light so dark mode doesn't print black. */
+@media print {
+  :root {
+    --background: #ffffff;
+    --surface: #ffffff;
+    --surface-soft: #f4f4f4;
+    --border: #cccccc;
+    --foreground: #000000;
+    --foreground-muted: #444444;
+  }
+  body.print-master * {
+    visibility: hidden;
+  }
+  body.print-master .print-area,
+  body.print-master .print-area * {
+    visibility: visible;
+  }
+  body.print-master .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

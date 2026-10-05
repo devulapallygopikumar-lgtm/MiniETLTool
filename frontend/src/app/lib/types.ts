@@ -297,9 +297,19 @@ export interface TargetColumn {
   required: boolean; // NOT NULL with no default
 }
 
+/** Generate a target column's value per row instead of reading a source field. */
+export interface GenerateSpec {
+  kind: "uuid" | "sequence";
+  prefix: string; // sequence only
+  start: number; // sequence only
+  step: number; // sequence only
+  pad: number; // sequence only: zero-pad width
+}
+
 export interface FieldMapItem {
   target: string;
   source: string | null;
+  generate?: GenerateSpec | null; // mutually exclusive with `source`
 }
 
 export interface TargetMapping {
@@ -321,4 +331,24 @@ export interface NewTargetMapping {
   target_schema: string;
   target_table: string;
   fields: FieldMapItem[];
+}
+
+// ---- Loan details ----
+
+export interface LoanContact {
+  name: string;
+  file_no: string;
+}
+
+export interface LoanMaster {
+  columns: string[]; // every column of tblmstcontact_live_loans, in table order
+  row: Record<string, unknown>;
+}
+
+export interface LoanLedgerMatch {
+  method: { key: string; label: string } | null; // null = nothing matched
+  tried: { key: string; label: string }[]; // stricter methods that matched nothing
+  ledgers: { name: string; rows: number }[];
+  truncated: boolean;
+  rows: Record<string, unknown>[];
 }

@@ -135,6 +135,12 @@ export function SearchableSelect({
         <div
           ref={popRef}
           style={{ position: "fixed", ...pos }}
+          // Most selects sit inside a <label>, and a click on a list item would
+          // otherwise be forwarded by the label to the button -- re-opening
+          // the list right after a pick closed it.
+          onClick={(e) => {
+            if (!(e.target instanceof HTMLInputElement)) e.preventDefault();
+          }}
           className="z-50 w-max max-w-[28rem] rounded-md border border-border bg-surface text-sm text-foreground shadow-lg"
         >
           <input

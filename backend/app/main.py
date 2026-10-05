@@ -10,6 +10,7 @@ from .routers import (
     connections,
     datasets,
     domains,
+    loan_details,
     process,
     rules,
     target_mappings,
@@ -44,6 +45,7 @@ app.include_router(connections.router)
 app.include_router(domains.router)
 app.include_router(clients.router)
 app.include_router(target_mappings.router)
+app.include_router(loan_details.router)
 
 
 @app.get("/health")

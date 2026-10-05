@@ -20,6 +20,14 @@ import type { Connection, Dataset, TargetColumn, TargetMapping, TargetTable } fr
 const selectClass = "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 
+// A "source field" choice that generates the value per row (backend: id_generators.py).
+const GEN_PREFIX = "__gen:";
+type SeqConfig = { prefix: string; start: number; pad: number };
+const DEFAULT_SEQ: SeqConfig = { prefix: "", start: 1, pad: 0 };
+
+// Same formula as the backend's format_sequence_id, for the live example.
+const seqExample = (c: SeqConfig, offset: number) => `${c.prefix}${String(c.start + offset).padStart(c.pad, "0")}`;
+
 export default function MappingPage() {
   const { can } = useAuth();
   const canManage = can("mapping:manage");
@@ -35,7 +43,9 @@ export default function MappingPage() {
   const [tableKey, setTableKey] = useState(""); // "schema.table"
   const [datasetId, setDatasetId] = useState("");
   const [columns, setColumns] = useState<TargetColumn[] | null>(null);
-  const [map, setMap] = useState<Record<string, string>>({}); // target column -> source field
+  // target column -> source field, or GEN_PREFIX + kind when its value is generated
+  const [map, setMap] = useState<Record<string, string>>({});
+  const [genCfg, setGenCfg] = useState<Record<string, SeqConfig>>({}); // target column -> sequence settings
   // Table to select once the (re)loaded table list arrives -- set by "Open".
   const pendingTable = useRef<string | null>(null);
 
@@ -106,10 +116,16 @@ export default function MappingPage() {
   // Columns + entity known -> start from the saved mapping, if any.
   useEffect(() => {
     const next: Record<string, string> = {};
+    const cfgs: Record<string, SeqConfig> = {};
     existing?.fields.forEach((f) => {
       if (f.source) next[f.target] = f.source;
+      else if (f.generate) {
+        next[f.target] = GEN_PREFIX + f.generate.kind;
+        cfgs[f.target] = { prefix: f.generate.prefix, start: f.generate.start, pad: f.generate.pad };
+      }
     });
     setMap(next);
+    setGenCfg(cfgs);
     setMessage(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [existing?.id, datasetId, tableKey, columns]);
@@ -146,7 +162,17 @@ export default function MappingPage() {
         connection_id: connectionId,
         target_schema: schemaName,
         target_table: tableName,
-        fields: columns.map((c) => ({ target: c.name, source: map[c.name] || null })),
+        fields: columns.map((c) => {
+          const v = map[c.name] || "";
+          if (!v.startsWith(GEN_PREFIX)) return { target: c.name, source: v || null };
+          const kind = v.slice(GEN_PREFIX.length) as "uuid" | "sequence";
+          const cfg = { ...DEFAULT_SEQ, ...genCfg[c.name] };
+          return {
+            target: c.name,
+            source: null,
+            generate: { kind, prefix: cfg.prefix, start: cfg.start, step: 1, pad: cfg.pad },
+          };
+        }),
       });
       setMessage(`Mapping saved: ${dataset.name} → ${schemaName}.${tableName}.`);
       refreshMappings();
@@ -325,6 +351,8 @@ export default function MappingPage() {
                             className={`${selectClass} max-w-xs`}
                           >
                             <option value="">— not mapped —</option>
+                            <option value={GEN_PREFIX + "uuid"}>ƒ Generate UUID</option>
+                            <option value={GEN_PREFIX + "sequence"}>ƒ Generate sequence (1, 2, 3…)</option>
                             {sourceFields.map((f) => (
                               <option key={f.name} value={f.name}>
                                 {f.name} ({f.type}){usedSources.has(f.name) && f.name !== src ? " · used" : ""}
@@ -332,6 +360,53 @@ export default function MappingPage() {
                             ))}
                           </Select>
                           {srcType && <span className="text-xs text-foreground-muted">{srcType}</span>}
+                          {src === GEN_PREFIX + "uuid" && (
+                            <span className="text-xs text-foreground-muted">random, e.g. 3f2b8c1e-9a4d-4e6b-…</span>
+                          )}
+                          {src === GEN_PREFIX + "sequence" && (() => {
+                            const cfg = { ...DEFAULT_SEQ, ...genCfg[c.name] };
+                            const set = (patch: Partial<SeqConfig>) =>
+                              setGenCfg((g) => ({ ...g, [c.name]: { ...cfg, ...patch } }));
+                            const num = "w-16 rounded-md border border-border bg-surface px-1.5 py-1 text-xs";
+                            return (
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-foreground-muted">
+                                <input
+                                  value={cfg.prefix}
+                                  maxLength={32}
+                                  placeholder="Prefix"
+                                  disabled={!canManage}
+                                  onChange={(e) => set({ prefix: e.target.value })}
+                                  className="w-20 rounded-md border border-border bg-surface px-1.5 py-1 text-xs"
+                                />
+                                <label className="flex items-center gap-1">
+                                  start
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={cfg.start}
+                                    disabled={!canManage}
+                                    onChange={(e) => set({ start: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                                    className={num}
+                                  />
+                                </label>
+                                <label className="flex items-center gap-1">
+                                  digits
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    max={20}
+                                    value={cfg.pad}
+                                    disabled={!canManage}
+                                    onChange={(e) =>
+                                      set({ pad: Math.min(20, Math.max(0, parseInt(e.target.value, 10) || 0)) })
+                                    }
+                                    className={num}
+                                  />
+                                </label>
+                                <span>e.g. {seqExample(cfg, 0)}, {seqExample(cfg, 1)}, {seqExample(cfg, 2)}</span>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </td>
                     </tr>
@@ -354,7 +429,7 @@ export default function MappingPage() {
               <tr>
                 <SortTh pager={savedPager} col="dataset_name" className="px-4 py-2 font-medium">New Entity</SortTh>
                 <SortTh pager={savedPager} col="target" value={(m) => `${m.connection_name} ${m.target_schema}.${m.target_table}`} className="px-4 py-2 font-medium">Target</SortTh>
-                <SortTh pager={savedPager} col="mapped" value={(m) => m.fields.filter((f) => f.source).length} className="px-4 py-2 font-medium">Fields mapped</SortTh>
+                <SortTh pager={savedPager} col="mapped" value={(m) => m.fields.filter((f) => f.source || f.generate).length} className="px-4 py-2 font-medium">Fields mapped</SortTh>
                 <SortTh pager={savedPager} col="updated_at" className="px-4 py-2 font-medium">Updated</SortTh>
                 <th className="px-4 py-2" />
               </tr>
@@ -367,7 +442,7 @@ export default function MappingPage() {
                     {m.connection_name} · {m.target_schema}.{m.target_table}
                   </td>
                   <td className="px-4 py-2 text-foreground-muted">
-                    {m.fields.filter((f) => f.source).length} / {m.fields.length}
+                    {m.fields.filter((f) => f.source || f.generate).length} / {m.fields.length}
                   </td>
                   <td className="px-4 py-2 text-xs text-foreground-muted">{new Date(m.updated_at).toLocaleString()}</td>
                   <td className="px-4 py-2 text-right">

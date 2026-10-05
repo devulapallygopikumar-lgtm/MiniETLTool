@@ -6,6 +6,9 @@ import type {
   AuditEvent,
   AuthMe,
   Connection,
+  LoanContact,
+  LoanLedgerMatch,
+  LoanMaster,
   NewTargetMapping,
   TargetColumn,
   TargetMapping,
@@ -432,4 +435,20 @@ export function saveTargetMapping(body: NewTargetMapping): Promise<TargetMapping
 
 export function deleteTargetMapping(id: string): Promise<void> {
   return request(`/api/v1/target-mappings/${id}`, { method: "DELETE" });
+}
+
+// ---- Loan details ----
+
+export function listLoanContacts(): Promise<LoanContact[]> {
+  return request("/api/v1/loan-details/contacts");
+}
+
+export function getLoanMaster(name: string, fileNo: string): Promise<LoanMaster> {
+  const q = new URLSearchParams({ name, file_no: fileNo });
+  return request(`/api/v1/loan-details/master?${q}`);
+}
+
+export function getLoanLedger(name: string, fileNo: string): Promise<LoanLedgerMatch> {
+  const q = new URLSearchParams({ name, file_no: fileNo });
+  return request(`/api/v1/loan-details/ledger?${q}`);
 }
