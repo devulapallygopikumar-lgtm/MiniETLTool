@@ -7,7 +7,7 @@ import { useAuth } from "@/app/lib/auth-context";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 import { UploadAside } from "@/app/components/UploadAside";
-import { Alert, Button, Card, CollapsibleCard, Pagination, usePagination } from "@/app/components/ui";
+import { Alert, Button, Card, CollapsibleCard, Pagination, usePagination, SortTh } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function DatasetsPage() {
@@ -173,12 +173,12 @@ export default function DatasetsPage() {
                     onChange={toggleAll}
                   />
                 </th>
-                <th className="px-4 py-3 font-medium">Dataset</th>
-                <th className="px-4 py-3 font-medium">Client</th>
-                <th className="px-4 py-3 font-medium">Source</th>
-                <th className="px-4 py-3 font-medium">Rows</th>
-                <th className="px-4 py-3 font-medium">State</th>
-                <th className="px-4 py-3 font-medium">Validation</th>
+                <SortTh pager={pager} col="name" className="px-4 py-3 font-medium">Dataset</SortTh>
+                <SortTh pager={pager} col="client_name" className="px-4 py-3 font-medium">Client</SortTh>
+                <SortTh pager={pager} col="source_filename" className="px-4 py-3 font-medium">Source</SortTh>
+                <SortTh pager={pager} col="rows" value={(d) => d.row_count ?? d.latest_rows_read} className="px-4 py-3 font-medium">Rows</SortTh>
+                <SortTh pager={pager} col="state" className="px-4 py-3 font-medium">State</SortTh>
+                <SortTh pager={pager} col="gate_state" className="px-4 py-3 font-medium">Validation</SortTh>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>

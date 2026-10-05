@@ -1,10 +1,9 @@
-"""A registry of saved RDBMS connections (Target Dataset menu). Metadata
-only for now -- nothing in the pipeline reads from these yet; see
-app/models.py's Connection docstring."""
+"""Saved RDBMS connections (Target Connection menu), plus read-only
+discovery of a target's tables/columns for the Mapping screen."""
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from .. import audit, db_connections, models, schemas
@@ -111,3 +110,32 @@ def test_connection(connection_id: str, db: Session = Depends(get_db)):
     db.commit()
 
     return schemas.ConnectionTestResult(ok=ok, message=message)
+
+
+@router.get("/{connection_id}/tables", response_model=list[schemas.TargetTableOut])
+def list_target_tables(connection_id: str, db: Session = Depends(get_db)):
+    conn = get_connection_or_404(db, connection_id)
+    try:
+        tables = db_connections.list_tables(conn)
+    except Exception as exc:  # noqa: BLE001 - target unreachable / no rights: readable message
+        raise HTTPException(502, f"Could not read tables from {conn.name}: {exc}") from exc
+    return [schemas.TargetTableOut(schema_name=s, name=t) for s, t in tables]
+
+
+@router.get("/{connection_id}/columns", response_model=list[schemas.TargetColumnOut])
+def list_target_columns(
+    connection_id: str,
+    schema_name: str = Query(...),
+    table: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    conn = get_connection_or_404(db, connection_id)
+    try:
+        columns = db_connections.list_columns(conn, schema_name, table)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(502, f"Could not read columns from {conn.name}: {exc}") from exc
+    if not columns:
+        raise HTTPException(404, f"Table {schema_name}.{table} not found")
+    return [
+        schemas.TargetColumnOut(**c, required=not c["nullable"] and not c["has_default"]) for c in columns
+    ]

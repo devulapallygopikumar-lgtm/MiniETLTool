@@ -2,7 +2,7 @@
 this codebase's actual routers -- reproduced here, not re-derived, per
 Mini ETL RBAC Prompt.md §3/§6.
 
-Permissions with no current endpoint (mapping:manage, duplicate:manage,
+Permissions with no current endpoint (duplicate:manage,
 duplicate:resolve, record:edit, export:create, export:download) are
 listed for completeness but deliberately unwired -- nothing in this
 codebase represents a mapping editor, an interactive duplicate-resolution
@@ -26,7 +26,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "tenant:manage": _ADMIN,
     "role_access:manage": _ADMIN,
     "product:manage": _ADMIN_OPS,  # process data into derived datasets
-    "mapping:manage": _ADMIN,  # unwired -- no mapping editor endpoint exists
+    "mapping:manage": _ADMIN_OPS,  # field mappings to target tables
     "validation:manage": _ADMIN_OPS,  # create/edit rules
     "duplicate:manage": _ADMIN,  # unwired -- see module docstring
     "format_rule:manage": _ADMIN_OPS,  # create/edit transforms
@@ -36,6 +36,7 @@ PERMISSIONS: dict[str, frozenset[str]] = {
     "validation:delete": _ADMIN,
     "format_rule:delete": _ADMIN,
     "client:delete": _ADMIN,
+    "mapping:delete": _ADMIN,
     # Every role can read.
     "product:read": _ALL,
     "mapping:read": _ALL,

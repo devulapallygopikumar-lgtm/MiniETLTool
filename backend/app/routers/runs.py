@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session, object_session
 
 from .. import audit, models, schemas
+from ..config import settings
 from ..database import get_db
 from ..deps import can_access_dataset, get_current_user, require_maker_checker, require_permission
 from ..runner import execute_run, execute_run_after_approval
@@ -106,7 +107,8 @@ def approve_run(
     db: Session = Depends(get_db),
 ):
     run = _get_run_or_404(db, run_id, current_user)
-    require_maker_checker(current_user, run.created_by)
+    if settings.maker_checker:  # off for now -- see config.Settings.maker_checker
+        require_maker_checker(current_user, run.created_by)
     if run.state != "awaiting_approval":
         raise HTTPException(409, f"Run is '{run.state}', not awaiting approval")
 

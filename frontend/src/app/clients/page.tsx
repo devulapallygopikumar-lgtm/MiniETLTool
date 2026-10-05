@@ -11,7 +11,7 @@ import {
   listDomains,
 } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
-import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, FormField } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, FormField, SortTh, Pagination, usePagination } from "@/app/components/ui";
 import type { Client, Domain } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -178,43 +178,60 @@ export default function ClientsPage() {
             {rows.length === 0 ? (
               <p className="px-4 py-4 text-sm text-foreground-muted">No clients yet.</p>
             ) : (
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-left text-xs text-foreground-muted">
-                    <th className="px-4 py-3 font-medium">Client</th>
-                    <th className="px-4 py-3 font-medium">Contact</th>
-                    <th className="px-4 py-3 font-medium">Notes</th>
-                    <th className="px-4 py-3 font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((c) => (
-                    <tr key={c.id} className="border-b border-border last:border-0">
-                      <td className="px-4 py-3 font-medium">{c.name}</td>
-                      <td className="px-4 py-3 text-foreground-muted">
-                        {[c.contact_name, c.contact_email, c.contact_phone].filter(Boolean).join(" · ") || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-foreground-muted">{c.notes ?? "—"}</td>
-                      <td className="px-4 py-3 text-right">
-                        {canDelete && (
-                          <Button
-                            variant="white"
-                            size="sm"
-                            className="text-foreground-muted hover:text-danger"
-                            onClick={() => handleDeleteClient(c)}
-                          >
-                            Delete
-                          </Button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ClientsTable rows={rows} canDelete={canDelete} onDelete={handleDeleteClient} />
             )}
           </Card>
         );
       })}
     </div>
+  );
+}
+
+function ClientsTable({
+  rows,
+  canDelete,
+  onDelete,
+}: {
+  rows: Client[];
+  canDelete: boolean;
+  onDelete: (c: Client) => void;
+}) {
+  const pager = usePagination(rows);
+  const contact = (c: Client) => [c.contact_name, c.contact_email, c.contact_phone].filter(Boolean).join(" · ");
+  return (
+    <>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border text-left text-xs text-foreground-muted">
+            <SortTh pager={pager} col="name">Client</SortTh>
+            <SortTh pager={pager} col="contact" value={contact}>Contact</SortTh>
+            <SortTh pager={pager} col="notes">Notes</SortTh>
+            <th className="px-4 py-3 font-medium"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {pager.pageItems.map((c) => (
+            <tr key={c.id} className="border-b border-border last:border-0">
+              <td className="px-4 py-3 font-medium">{c.name}</td>
+              <td className="px-4 py-3 text-foreground-muted">{contact(c) || "—"}</td>
+              <td className="px-4 py-3 text-foreground-muted">{c.notes ?? "—"}</td>
+              <td className="px-4 py-3 text-right">
+                {canDelete && (
+                  <Button
+                    variant="white"
+                    size="sm"
+                    className="text-foreground-muted hover:text-danger"
+                    onClick={() => onDelete(c)}
+                  >
+                    Delete
+                  </Button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <Pagination pager={pager} className="px-4 py-3" />
+    </>
   );
 }

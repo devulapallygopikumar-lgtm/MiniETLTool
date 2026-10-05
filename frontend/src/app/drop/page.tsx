@@ -12,7 +12,7 @@ import {
   restoreDataset,
 } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
-import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, SortTh, Pagination, usePagination } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
@@ -22,6 +22,8 @@ export default function DropDatasetsPage() {
   const allowed = can("dataset:delete");
   const [active, setActive] = useState<Dataset[]>([]);
   const [trash, setTrash] = useState<Dataset[]>([]);
+  const activePager = usePagination(active);
+  const trashPager = usePagination(trash);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -79,14 +81,19 @@ export default function DropDatasetsPage() {
           <p className="px-4 py-4 text-sm text-foreground-muted">No active datasets.</p>
         ) : (
           <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left text-xs text-foreground-muted">
+                <SortTh pager={activePager} col="name">Dataset</SortTh>
+                <SortTh pager={activePager} col="client" value={(d: Dataset) => [d.domain_name, d.client_name].filter(Boolean).join(" › ")}>Client</SortTh>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
             <tbody>
-              {active.map((d) => (
+              {activePager.pageItems.map((d) => (
                 <tr key={d.id} className="border-b border-border last:border-0">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{d.name}</div>
-                    <div className="text-xs text-foreground-muted">
-                      {[d.domain_name, d.client_name].filter(Boolean).join(" › ") || "no client"}
-                    </div>
+                  <td className="px-4 py-3 font-medium">{d.name}</td>
+                  <td className="px-4 py-3 text-xs text-foreground-muted">
+                    {[d.domain_name, d.client_name].filter(Boolean).join(" › ") || "no client"}
                   </td>
                   <td className="px-4 py-3 text-right">
                     {confirming === `trash:${d.id}` ? (
@@ -115,6 +122,7 @@ export default function DropDatasetsPage() {
             </tbody>
           </table>
         )}
+        <Pagination pager={activePager} className="px-4 py-3" />
       </Card>
 
       <Card>
@@ -124,16 +132,22 @@ export default function DropDatasetsPage() {
         ) : (
           <>
             <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs text-foreground-muted">
+                  <SortTh pager={trashPager} col="name">Dataset</SortTh>
+                  <SortTh pager={trashPager} col="client" value={(d: Dataset) => [d.domain_name, d.client_name].filter(Boolean).join(" › ")}>Client</SortTh>
+                  <SortTh pager={trashPager} col="deleted_at">Trashed</SortTh>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
               <tbody>
-                {trash.map((d) => (
+                {trashPager.pageItems.map((d) => (
                   <tr key={d.id} className="border-b border-border last:border-0">
-                    <td className="px-4 py-3">
-                      <div className="font-medium">{d.name}</div>
-                      <div className="text-xs text-foreground-muted">
-                        {[d.domain_name, d.client_name].filter(Boolean).join(" › ") || "no client"} · trashed{" "}
-                        {fmt(d.deleted_at)}
-                      </div>
+                    <td className="px-4 py-3 font-medium">{d.name}</td>
+                    <td className="px-4 py-3 text-xs text-foreground-muted">
+                      {[d.domain_name, d.client_name].filter(Boolean).join(" › ") || "no client"}
                     </td>
+                    <td className="px-4 py-3 text-xs text-foreground-muted">{fmt(d.deleted_at)}</td>
                     <td className="px-4 py-3 text-right">
                       {confirming === `drop:${d.id}` ? (
                         <span className="inline-flex items-center gap-2">
@@ -170,6 +184,7 @@ export default function DropDatasetsPage() {
                 ))}
               </tbody>
             </table>
+            <Pagination pager={trashPager} className="px-4 py-3" />
             <div className="border-t border-border px-4 py-3">
               {confirming === "empty" ? (
                 <span className="inline-flex items-center gap-2">

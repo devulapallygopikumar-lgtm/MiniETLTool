@@ -1,7 +1,7 @@
 export { Button } from "./Button";
 export { Card, CardHeader, CardBody } from "./Card";
 export { CollapsibleCard } from "./CollapsibleCard";
-export { Pagination, usePagination, PAGE_SIZES, type Pager } from "./Pagination";
+export { Pagination, usePagination, SortTh, PAGE_SIZES, ALL_ROWS, type Pager, type SortDir } from "./Pagination";
 export { Alert } from "./Alert";
 export { SectionTitle } from "./SectionTitle";
 export { FormField } from "./FormField";

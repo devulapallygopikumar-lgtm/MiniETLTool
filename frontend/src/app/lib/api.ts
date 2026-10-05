@@ -6,6 +6,10 @@ import type {
   AuditEvent,
   AuthMe,
   Connection,
+  NewTargetMapping,
+  TargetColumn,
+  TargetMapping,
+  TargetTable,
   ConnectionTestResult,
   Dataset,
   NewConnection,
@@ -389,4 +393,27 @@ export function dropDatasetPermanently(id: string): Promise<void> {
 
 export function emptyTrash(): Promise<{ dropped: number }> {
   return request("/api/v1/datasets/trash/empty", { method: "POST" });
+}
+
+// ---- Field mapping ----
+
+export function listTargetTables(connectionId: string): Promise<TargetTable[]> {
+  return request(`/api/v1/connections/${connectionId}/tables`);
+}
+
+export function listTargetColumns(connectionId: string, schema: string, table: string): Promise<TargetColumn[]> {
+  const q = new URLSearchParams({ schema_name: schema, table });
+  return request(`/api/v1/connections/${connectionId}/columns?${q}`);
+}
+
+export function listTargetMappings(): Promise<TargetMapping[]> {
+  return request("/api/v1/target-mappings");
+}
+
+export function saveTargetMapping(body: NewTargetMapping): Promise<TargetMapping> {
+  return request("/api/v1/target-mappings", { method: "PUT", body: JSON.stringify(body) });
+}
+
+export function deleteTargetMapping(id: string): Promise<void> {
+  return request(`/api/v1/target-mappings/${id}`, { method: "DELETE" });
 }

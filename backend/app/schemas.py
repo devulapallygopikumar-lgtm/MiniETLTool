@@ -191,7 +191,7 @@ class ValidationIssueRowOut(BaseModel):
     message: str
 
 
-DerivedOp = Literal["sort", "dedupe", "group_by", "window", "pivot", "unpivot", "join"]
+DerivedOp = Literal["no_action", "sort", "dedupe", "group_by", "window", "pivot", "unpivot", "join"]
 
 
 class NewDerivedDataset(BaseModel):
@@ -381,3 +381,46 @@ class ClientPatch(BaseModel):
     contact_email: str | None = None
     contact_phone: str | None = None
     notes: str | None = None
+
+
+class TargetTableOut(BaseModel):
+    schema_name: str
+    name: str
+
+
+class TargetColumnOut(BaseModel):
+    name: str
+    type: str
+    nullable: bool
+    has_default: bool
+    required: bool  # NOT NULL with no default -- must be mapped to load
+
+
+class FieldMapItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target: str
+    source: str | None = None
+
+
+class NewTargetMapping(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dataset_id: str
+    connection_id: str
+    target_schema: str
+    target_table: str
+    fields: list[FieldMapItem]
+
+
+class TargetMappingOut(BaseModel):
+    id: str
+    dataset_id: str
+    dataset_name: str
+    connection_id: str
+    connection_name: str
+    target_schema: str
+    target_table: str
+    fields: list[FieldMapItem]
+    created_at: datetime
+    updated_at: datetime

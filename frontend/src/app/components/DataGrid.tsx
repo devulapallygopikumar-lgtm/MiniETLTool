@@ -12,7 +12,7 @@
 // since there's no full-download endpoint behind this.
 
 import { useState } from "react";
-import { Button, IconChevronRight, IconDownload, Pagination, usePagination } from "@/app/components/ui";
+import { Button, IconChevronRight, IconDownload, Pagination, usePagination, SortTh } from "@/app/components/ui";
 
 type Row = Record<string, unknown>;
 
@@ -135,12 +135,14 @@ export function DataGrid({
             <thead className="sticky top-0 z-10 bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
                 {cols.map((c) => (
-                  <th
+                  <SortTh
                     key={c}
+                    pager={pager}
+                    col={c}
                     className="whitespace-nowrap border-b-2 border-r border-border px-3 py-2 font-medium last:border-r-0"
                   >
                     {c}
-                  </th>
+                  </SortTh>
                 ))}
               </tr>
             </thead>

@@ -16,6 +16,7 @@ import {
   CollapsibleCard,
   Pagination,
   usePagination,
+  SortTh,
   FormField,
   IconChevronRight,
   IconPlus,
@@ -26,6 +27,7 @@ import type { Dataset, DerivedOp } from "@/app/lib/types";
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
 
 const OPS: { value: DerivedOp; label: string }[] = [
+  { value: "no_action", label: "No action" },
   { value: "sort", label: "Sort" },
   { value: "dedupe", label: "Distinct / dedupe" },
   { value: "group_by", label: "Group by / aggregate" },
@@ -36,6 +38,7 @@ const OPS: { value: DerivedOp; label: string }[] = [
 ];
 
 const OP_DESCRIPTIONS: Record<DerivedOp, string> = {
+  no_action: "Copy every row and column of the dataset into the new entity as-is — no sorting, grouping or other change.",
   sort: "Reorder a final dataset's rows by one column.",
   dedupe: "Keep one row per distinct combination of the given columns.",
   group_by: "Collapse rows into groups, computing an aggregate (count/sum/avg/min/max) per group.",
@@ -203,6 +206,8 @@ export default function ProcessPage() {
 
   function buildArgs(): Record<string, unknown> | null {
     switch (op) {
+      case "no_action":
+        return {};
       case "sort":
         if (!sortColumn) return null;
         return { column: sortColumn, order: sortOrder };
@@ -288,7 +293,7 @@ export default function ProcessPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-xl font-semibold">Process Data</h1>
+        <h1 className="text-xl font-semibold">New Entity</h1>
         <p className="text-sm text-foreground-muted">
           Build a new dataset from one or two already-loaded final datasets:
           sort, group-by/aggregate, join, distinct/dedupe, window functions,
@@ -702,11 +707,11 @@ export default function ProcessPage() {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Entity</th>
-                <th className="px-4 py-3 font-medium">Operation</th>
-                <th className="px-4 py-3 font-medium">Rows</th>
-                <th className="px-4 py-3 font-medium">State</th>
-                <th className="px-4 py-3 font-medium">Validation</th>
+                <SortTh pager={pager} col="name" className="px-4 py-3 font-medium">Entity</SortTh>
+                <SortTh pager={pager} col="source_filename" className="px-4 py-3 font-medium">Operation</SortTh>
+                <SortTh pager={pager} col="rows" value={(d) => d.row_count ?? d.preview_row_count} className="px-4 py-3 font-medium">Rows</SortTh>
+                <SortTh pager={pager} col="state" className="px-4 py-3 font-medium">State</SortTh>
+                <SortTh pager={pager} col="gate_state" className="px-4 py-3 font-medium">Validation</SortTh>
                 <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>

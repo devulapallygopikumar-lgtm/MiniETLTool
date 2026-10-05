@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ApiError, listDatasets } from "@/app/lib/api";
-import { Alert, Card, CollapsibleCard, Pagination, usePagination } from "@/app/components/ui";
+import { Alert, Card, CollapsibleCard, Pagination, usePagination, SortTh } from "@/app/components/ui";
 import type { Dataset } from "@/app/lib/types";
 
 export default function FinalDatasetsPage() {
@@ -61,9 +61,9 @@ export default function FinalDatasetsPage() {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Dataset</th>
-                <th className="px-4 py-3 font-medium">Source</th>
-                <th className="px-4 py-3 font-medium">Rows loaded</th>
+                <SortTh pager={pager} col="name" className="px-4 py-3 font-medium">Dataset</SortTh>
+                <SortTh pager={pager} col="source_filename" className="px-4 py-3 font-medium">Source</SortTh>
+                <SortTh pager={pager} col="row_count" className="px-4 py-3 font-medium">Rows loaded</SortTh>
               </tr>
             </thead>
             <tbody>

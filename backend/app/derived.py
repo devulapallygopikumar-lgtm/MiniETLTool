@@ -1,5 +1,5 @@
 """Executes a "process into a new entity" operation (ARCHITECTURE.md §5.3's
-blocking operators: sort, group-by/aggregate, join, dedupe/distinct,
+blocking operators, plus no_action -- a plain copy: sort, group-by/aggregate, join, dedupe/distinct,
 window functions, pivot/unpivot) as one SQL statement against source
 datasets' already-materialized typed tables.
 
@@ -94,6 +94,10 @@ def build_sql(db: Session, spec: dict) -> tuple[str, list[str]]:
     cols = _col_map(db, source)
     table = _q(_table(source))
 
+    if op == "no_action":
+        # Every row and column exactly as loaded -- a straight copy into the
+        # new entity's own table.
+        return f"SELECT {_select_all(table, cols)} FROM {table}", list(cols.keys())
     if op == "sort":
         return _sort_sql(table, cols, args)
     if op == "dedupe":

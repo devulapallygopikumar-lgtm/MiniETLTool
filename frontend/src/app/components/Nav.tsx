@@ -20,14 +20,16 @@ interface NavItem {
 }
 
 // Sidebar order. "Discovered" is the page that used to be "Final Datasets";
-// "Target Connection" is the old "Target Dataset".
+// "New Entity" the old "Process Data"; "Target Connection" the old
+// "Target Dataset".
 const ITEMS: NavItem[] = [
   { href: "/users", label: "Users", show: (can) => can("user:manage") },
   { href: "/clients", label: "Clients", show: () => true },
   { href: "/", label: "Uploads / Datasets", show: () => true },
   { href: "/final", label: "Discovered", show: () => true },
-  { href: "/process", label: "Process Data", show: () => true },
+  { href: "/process", label: "New Entity", show: () => true },
   { href: "/target", label: "Target Connection", show: () => true },
+  { href: "/mapping", label: "Mapping", show: () => true },
   { href: "/audit", label: "Audit", show: () => true },
   { href: "/drop", label: "Drop Datasets", show: (can) => can("dataset:delete") },
 ];

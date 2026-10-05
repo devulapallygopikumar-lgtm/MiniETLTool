@@ -11,9 +11,10 @@ import {
   getRunValidationRows,
 } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
+import { MAKER_CHECKER } from "@/app/lib/permissions";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
-import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconX, Pagination, usePagination } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardHeader, IconChevronRight, IconX, Pagination, usePagination, SortTh } from "@/app/components/ui";
 import type { Run, RunValidation, ValidationIssueRow } from "@/app/lib/types";
 
 const TERMINAL_STATES = new Set([
@@ -162,7 +163,7 @@ export default function RunPage() {
             </span>
           )}
           {run.state === "awaiting_approval" && can("batch:approve") && (
-            user?.id === run.created_by ? (
+            MAKER_CHECKER && user?.id === run.created_by ? (
               <span className="text-xs text-foreground-muted" title="Maker-checker: the uploader can't approve their own run">
                 Awaiting a different approver
               </span>
@@ -216,11 +217,11 @@ export default function RunPage() {
                 <table className="w-full text-left text-sm">
                   <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
                     <tr>
-                      <th className="px-3 py-2 font-medium">Rule</th>
-                      <th className="px-3 py-2 font-medium">Scope</th>
-                      <th className="px-3 py-2 font-medium">Enforcement</th>
-                      <th className="px-3 py-2 font-medium">Violations</th>
-                      <th className="px-3 py-2 font-medium">Pass rate</th>
+                      <SortTh pager={resultsPager} col="rule" className="px-3 py-2 font-medium">Rule</SortTh>
+                      <SortTh pager={resultsPager} col="scope" className="px-3 py-2 font-medium">Scope</SortTh>
+                      <SortTh pager={resultsPager} col="enforcement" className="px-3 py-2 font-medium">Enforcement</SortTh>
+                      <SortTh pager={resultsPager} col="violations" className="px-3 py-2 font-medium">Violations</SortTh>
+                      <SortTh pager={resultsPager} col="pass_rate" className="px-3 py-2 font-medium">Pass rate</SortTh>
                       <th className="px-3 py-2 font-medium"></th>
                     </tr>
                   </thead>
@@ -305,10 +306,10 @@ export default function RunPage() {
                 <table className="w-full text-left text-sm">
                   <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
                     <tr>
-                      <th className="px-3 py-1.5 font-medium">Row</th>
-                      <th className="px-3 py-1.5 font-medium">Column</th>
-                      <th className="px-3 py-1.5 font-medium">Value</th>
-                      <th className="px-3 py-1.5 font-medium">Message</th>
+                      <SortTh pager={rowsPager} col="row_ordinal" className="px-3 py-1.5 font-medium">Row</SortTh>
+                      <SortTh pager={rowsPager} col="column_name" className="px-3 py-1.5 font-medium">Column</SortTh>
+                      <SortTh pager={rowsPager} col="offending_value" className="px-3 py-1.5 font-medium">Value</SortTh>
+                      <SortTh pager={rowsPager} col="message" className="px-3 py-1.5 font-medium">Message</SortTh>
                     </tr>
                   </thead>
                   <tbody>

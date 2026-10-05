@@ -19,6 +19,9 @@ export const PERMISSIONS: Record<string, Role[]> = {
   "validation:delete": ADMIN,
   "format_rule:delete": ADMIN,
   "client:delete": ADMIN,
+  "mapping:manage": ADMIN_OPS,
+  "mapping:read": ALL,
+  "mapping:delete": ADMIN,
   "db_connection:manage": ADMIN,
   "product:read": ALL,
   "db_connection:read": ALL,
@@ -34,3 +37,7 @@ export function can(role: Role | undefined, permission: string): boolean {
   if (!role) return false;
   return (PERMISSIONS[permission] ?? []).includes(role);
 }
+
+// Mirrors backend settings.maker_checker (off for now): when true, the person
+// who started a run can't approve it. Flip both together.
+export const MAKER_CHECKER = false;

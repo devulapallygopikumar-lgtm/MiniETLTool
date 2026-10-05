@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     access_token_minutes: int = 15
     refresh_token_days: int = 7
 
+    # Maker-checker (the person who started a run can't approve it). OFF for
+    # now so one person can take a run all the way through; set
+    # MAKER_CHECKER=true in the environment to enforce it again.
+    maker_checker: bool = False
+
 
 settings = Settings()
 settings.upload_dir.mkdir(parents=True, exist_ok=True)

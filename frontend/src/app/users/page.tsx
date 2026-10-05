@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiError, createUser, deleteUser, listDomains, listUsers, updateUser } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
-import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, FormField } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, FormField, SortTh, Pagination, usePagination } from "@/app/components/ui";
 import type { Domain, Role, User } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -12,6 +12,7 @@ const ROLES: Role[] = ["admin", "operations", "reviewer", "auditor"];
 export default function UsersPage() {
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const pager = usePagination(users);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [domainId, setDomainId] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -148,15 +149,15 @@ export default function UsersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-foreground-muted">
-              <th className="px-4 py-3 font-medium">Email</th>
-              <th className="px-4 py-3 font-medium">Role</th>
-              <th className="px-4 py-3 font-medium">Domain</th>
-              <th className="px-4 py-3 font-medium">Active</th>
+              <SortTh pager={pager} col="email" className="px-4 py-3 font-medium">Email</SortTh>
+              <SortTh pager={pager} col="role" className="px-4 py-3 font-medium">Role</SortTh>
+              <SortTh pager={pager} col="domain_name" className="px-4 py-3 font-medium">Domain</SortTh>
+              <SortTh pager={pager} col="is_active" className="px-4 py-3 font-medium">Active</SortTh>
               <th className="px-4 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody>
-            {users.map((u) => (
+            {pager.pageItems.map((u) => (
               <tr key={u.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3 font-medium text-foreground">{u.email}</td>
                 <td className="px-4 py-3">
@@ -204,6 +205,7 @@ export default function UsersPage() {
             ))}
           </tbody>
         </table>
+        <Pagination pager={pager} className="px-4 py-3" />
       </Card>
     </div>
   );

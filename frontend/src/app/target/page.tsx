@@ -10,7 +10,7 @@ import {
   updateConnection,
 } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
-import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, FormField, IconPlus } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, CollapsibleCard, Pagination, usePagination, FormField, IconPlus, SortTh } from "@/app/components/ui";
 import type { Connection, ConnectionKind, NewConnection } from "@/app/lib/types";
 
 const inputClass = "rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -289,11 +289,11 @@ export default function TargetDatasetPage() {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Kind</th>
-                <th className="px-4 py-3 font-medium">Host</th>
-                <th className="px-4 py-3 font-medium">Database</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <SortTh pager={pager} col="name" className="px-4 py-3 font-medium">Name</SortTh>
+                <SortTh pager={pager} col="kind" className="px-4 py-3 font-medium">Kind</SortTh>
+                <SortTh pager={pager} col="host" className="px-4 py-3 font-medium">Host</SortTh>
+                <SortTh pager={pager} col="database" className="px-4 py-3 font-medium">Database</SortTh>
+                <SortTh pager={pager} col="last_test_ok" className="px-4 py-3 font-medium">Status</SortTh>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>

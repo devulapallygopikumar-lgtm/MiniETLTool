@@ -148,6 +148,7 @@ export interface ValidationIssueRow {
 }
 
 export type DerivedOp =
+  | "no_action"
   | "sort"
   | "dedupe"
   | "group_by"
@@ -279,4 +280,45 @@ export interface NewClient {
   contact_email?: string | null;
   contact_phone?: string | null;
   notes?: string | null;
+}
+
+// ---- Field mapping to target connection tables ----
+
+export interface TargetTable {
+  schema_name: string;
+  name: string;
+}
+
+export interface TargetColumn {
+  name: string;
+  type: string;
+  nullable: boolean;
+  has_default: boolean;
+  required: boolean; // NOT NULL with no default
+}
+
+export interface FieldMapItem {
+  target: string;
+  source: string | null;
+}
+
+export interface TargetMapping {
+  id: string;
+  dataset_id: string;
+  dataset_name: string;
+  connection_id: string;
+  connection_name: string;
+  target_schema: string;
+  target_table: string;
+  fields: FieldMapItem[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewTargetMapping {
+  dataset_id: string;
+  connection_id: string;
+  target_schema: string;
+  target_table: string;
+  fields: FieldMapItem[];
 }

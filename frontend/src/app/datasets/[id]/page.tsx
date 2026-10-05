@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ApiError, approveRun, getDataset, getRun, getRunValidation, previewDataset, runDataset } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
+import { MAKER_CHECKER } from "@/app/lib/permissions";
 import { StateBadge } from "@/app/components/StateBadge";
 import { ValidationPanel } from "@/app/components/ValidationPanel";
 import { RuleEditor } from "@/app/components/RuleEditor";
@@ -11,7 +12,7 @@ import { TransformEditor } from "@/app/components/TransformEditor";
 import { RunHistory } from "@/app/components/RunHistory";
 import { DataGrid } from "@/app/components/DataGrid";
 import Link from "next/link";
-import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, IconChevronRight, IconInfo, Pagination, usePagination } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, IconChevronRight, IconInfo, Pagination, usePagination, SortTh } from "@/app/components/ui";
 import type { Dataset, Run, RunValidation } from "@/app/lib/types";
 
 export default function DatasetPage() {
@@ -98,7 +99,7 @@ export default function DatasetPage() {
   }
 
   const awaitingApproval = latestRun?.state === "awaiting_approval";
-  const startedByMe = !!latestRun && latestRun.created_by === user?.id;
+  const startedByMe = MAKER_CHECKER && !!latestRun && latestRun.created_by === user?.id;
   const canApprove = awaitingApproval && can("batch:approve") && !startedByMe;
   const rowsText =
     dataset.row_count != null
@@ -147,13 +148,13 @@ export default function DatasetPage() {
             {awaitingApproval ? (
               <Alert variant="info">
                 <span className="text-xs leading-5">
-                Validation passed, so the rows are ready — but nothing is loaded until a second
-                person approves this run.{" "}
+                Validation passed, so the rows are ready — nothing is loaded until this run is
+                approved.{" "}
                 {startedByMe
                   ? "You started it, so an Admin or another Operations user must approve it."
                   : canApprove
                   ? "You can approve it now."
-                  : "An Admin or an Operations user (other than the one who started it) must approve it."}
+                  : "An Admin or an Operations user must approve it."}
                 </span>
               </Alert>
             ) : !latestRun ? (
@@ -247,8 +248,8 @@ export default function DatasetPage() {
                   <table className="w-full text-left text-sm">
                     <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
                       <tr>
-                        <th className="px-3 py-1.5 font-medium">Column</th>
-                        <th className="px-3 py-1.5 font-medium">Type</th>
+                        <SortTh pager={schemaPager} col="name" className="px-3 py-1.5 font-medium">Column</SortTh>
+                        <SortTh pager={schemaPager} col="type" className="px-3 py-1.5 font-medium">Type</SortTh>
                         <th className="px-3 py-1.5 font-medium">
                           <span
                             className="inline-flex cursor-help items-center gap-1"

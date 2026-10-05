@@ -12,6 +12,7 @@ from .routers import (
     domains,
     process,
     rules,
+    target_mappings,
     runs,
     transforms,
     uploads,
@@ -42,6 +43,7 @@ app.include_router(admin.router)
 app.include_router(connections.router)
 app.include_router(domains.router)
 app.include_router(clients.router)
+app.include_router(target_mappings.router)
 
 
 @app.get("/health")

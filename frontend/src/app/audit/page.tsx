@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ApiError, listAuditEvents } from "@/app/lib/api";
-import { Alert, CollapsibleCard, Pagination, usePagination } from "@/app/components/ui";
+import { Alert, CollapsibleCard, Pagination, usePagination, SortTh } from "@/app/components/ui";
 import type { AuditEvent } from "@/app/lib/types";
 
 export default function AuditPage() {
@@ -42,11 +42,11 @@ export default function AuditPage() {
           <table className="w-full text-left text-sm">
             <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
               <tr>
-                <th className="px-4 py-3 font-medium">Time</th>
-                <th className="px-4 py-3 font-medium">Actor</th>
-                <th className="px-4 py-3 font-medium">Action</th>
-                <th className="px-4 py-3 font-medium">Resource</th>
-                <th className="px-4 py-3 font-medium">Outcome</th>
+                <SortTh pager={pager} col="occurred_at" className="px-4 py-3 font-medium">Time</SortTh>
+                <SortTh pager={pager} col="actor" className="px-4 py-3 font-medium">Actor</SortTh>
+                <SortTh pager={pager} col="action" className="px-4 py-3 font-medium">Action</SortTh>
+                <SortTh pager={pager} col="resource" value={(e) => e.resource_label ?? e.resource_type} className="px-4 py-3 font-medium">Resource</SortTh>
+                <SortTh pager={pager} col="outcome" className="px-4 py-3 font-medium">Outcome</SortTh>
               </tr>
             </thead>
             <tbody>

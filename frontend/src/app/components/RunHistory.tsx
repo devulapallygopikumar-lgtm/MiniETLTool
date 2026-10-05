@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ApiError, listRuns } from "@/app/lib/api";
 import type { Run } from "@/app/lib/types";
-import { Alert, Button, Card, CardHeader, IconChevronRight, Pagination, usePagination } from "@/app/components/ui";
+import { Alert, Button, Card, CardHeader, IconChevronRight, Pagination, usePagination, SortTh } from "@/app/components/ui";
 import { GateBadge } from "@/app/components/GateBadge";
 import { StateBadge } from "@/app/components/StateBadge";
 
@@ -61,12 +61,12 @@ export function RunHistory({ datasetId }: { datasetId: string }) {
             <table className="w-full text-left text-sm">
               <thead className="sticky top-0 z-10 border-b-2 border-border bg-surface-soft text-xs uppercase tracking-wide text-foreground-muted">
                 <tr>
-                  <th className="px-3 py-2 font-medium">When</th>
-                  <th className="px-3 py-2 font-medium">State</th>
-                  <th className="px-3 py-2 font-medium">Validation</th>
-                  <th className="px-3 py-2 font-medium">Read</th>
-                  <th className="px-3 py-2 font-medium">Written</th>
-                  <th className="px-3 py-2 font-medium">Rejected</th>
+                  <SortTh pager={pager} col="created_at" className="px-3 py-2 font-medium">When</SortTh>
+                  <SortTh pager={pager} col="state" className="px-3 py-2 font-medium">State</SortTh>
+                  <SortTh pager={pager} col="gate_state" className="px-3 py-2 font-medium">Validation</SortTh>
+                  <SortTh pager={pager} col="rows_read" className="px-3 py-2 font-medium">Read</SortTh>
+                  <SortTh pager={pager} col="rows_written" className="px-3 py-2 font-medium">Written</SortTh>
+                  <SortTh pager={pager} col="rows_rejected" className="px-3 py-2 font-medium">Rejected</SortTh>
                 </tr>
               </thead>
               <tbody>

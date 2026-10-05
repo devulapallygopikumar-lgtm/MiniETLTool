@@ -327,3 +327,21 @@ class Connection(Base):
     last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     last_test_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class TargetMapping(Base):
+    """How a dataset's fields (a New Entity, typically) map onto the columns
+    of one table in a target connection. One per dataset + target table."""
+
+    __tablename__ = "target_mappings"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    dataset_id: Mapped[str] = mapped_column(String(36), ForeignKey("datasets.id"), index=True)
+    connection_id: Mapped[str] = mapped_column(String(36), ForeignKey("connections.id"), index=True)
+    target_schema: Mapped[str] = mapped_column(String(255))
+    target_table: Mapped[str] = mapped_column(String(255))
+    # [{"target": "<target column>", "source": "<dataset field>" | null}, ...]
+    fields_json: Mapped[list] = mapped_column(JsonType, default=list)
+    created_by: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
