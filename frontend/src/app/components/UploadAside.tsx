@@ -8,8 +8,8 @@ import type { Dataset } from "@/app/lib/types";
 const MIN_WIDTH = 280;
 const MAX_WIDTH = 640;
 const DEFAULT_WIDTH = 384;
-const WIDTH_KEY = "meridian.upload.width";
-const COLLAPSED_KEY = "meridian.upload.collapsed";
+const WIDTH_KEY = "datamigrationtool.upload.width";
+const COLLAPSED_KEY = "datamigrationtool.upload.collapsed";
 
 /** The upload panel beside the datasets grid: collapsible to a thin strip,
  *  and resizable by dragging its left edge (wide screens). Both settings are

@@ -1,5 +1,6 @@
 "use client";
 
+import { Logo } from "@/app/components/Logo";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -35,7 +36,7 @@ const ITEMS: NavItem[] = [
   { href: "/drop", label: "Drop Datasets", show: (can) => can("dataset:delete") },
 ];
 
-const COLLAPSE_KEY = "meridian.sidebar.collapsed";
+const COLLAPSE_KEY = "datamigrationtool.sidebar.collapsed";
 
 function UserMenu({ collapsed }: { collapsed: boolean }) {
   const router = useRouter();
@@ -133,8 +134,8 @@ export function Nav() {
       <div className={`flex items-center py-3 ${collapsed ? "justify-center px-2" : "justify-between px-4"}`}>
         {!collapsed && (
           <Link href="/" className="flex items-center gap-2 font-semibold">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary" />
-            Meridian
+            <Logo size={28} />
+            DataMigrationTool
           </Link>
         )}
         <button

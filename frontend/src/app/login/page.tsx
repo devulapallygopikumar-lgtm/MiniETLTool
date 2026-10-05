@@ -1,5 +1,6 @@
 "use client";
 
+import { Logo } from "@/app/components/Logo";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { ApiError } from "@/app/lib/api";
@@ -32,8 +33,9 @@ export default function LoginPage() {
   return (
     <div className="mx-auto flex max-w-sm flex-col gap-6 pt-12">
       <div className="flex flex-col gap-1 text-center">
+        <Logo size={56} className="mx-auto mb-2" />
         <h1 className="text-xl font-semibold">Sign in</h1>
-        <p className="text-sm text-foreground-muted">Mini ETL</p>
+        <p className="text-sm text-foreground-muted">DataMigrationTool</p>
       </div>
 
       <Card>

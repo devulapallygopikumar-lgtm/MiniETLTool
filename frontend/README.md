@@ -1,4 +1,4 @@
-# Meridian — frontend
+# DataMigrationTool — frontend
 
 Next.js App Router client for the ETL & reporting platform, scoped to the
 two-day vertical slice (see `../ARCHITECTURE.md` §20). Single tenant, no

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meridian ETL",
+  title: "DataMigrationTool ETL",
   description: "Lightweight multi-tenant ETL & reporting platform",
 };
 

@@ -1,3 +1,4 @@
+import { Logo } from "@/app/components/Logo";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
@@ -23,9 +24,9 @@ const data = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Meridian — rows you can trust",
+  title: "DataMigrationTool — rows you can trust",
   description:
-    "Meridian parses CSV, Excel and XML exports, validates every row against rules you set, and refuses to load anything that fails them.",
+    "DataMigrationTool parses CSV, Excel and XML exports, validates every row against rules you set, and refuses to load anything that fails them.",
 };
 
 const PIPELINE = [
@@ -71,8 +72,8 @@ export default function LandingPage() {
     <div className={`landing ${display.variable} ${body.variable} ${data.variable}`}>
       <header className="landing__header">
         <Link href="/landing" className="landing__wordmark">
-          <span className="landing__wordmark-dot" aria-hidden="true" />
-          Meridian
+          <Logo size={26} />
+          DataMigrationTool
         </Link>
         <Link href="/upload" className="landing__nav-cta">
           Start a run
@@ -86,7 +87,7 @@ export default function LandingPage() {
             Turn a folder of exports into rows you can trust.
           </h1>
           <p className="landing__dek">
-            Meridian reads <code>.csv</code>, <code>.xlsx</code> and <code>.xml</code> —
+            DataMigrationTool reads <code>.csv</code>, <code>.xlsx</code> and <code>.xml</code> —
             including raw Tally exports — checks every row against rules you set, and
             won&rsquo;t load anything until they pass.
           </p>
@@ -176,7 +177,7 @@ export default function LandingPage() {
       </section>
 
       <section className="landing__section">
-        <h2 className="landing__section-title">What Meridian doesn&rsquo;t do.</h2>
+        <h2 className="landing__section-title">What DataMigrationTool doesn&rsquo;t do.</h2>
         <p className="landing__section-lede">
           Every one of these is a deliberate cut, not a missing feature. They&rsquo;re
           what keeps a run predictable instead of needing an on-call rotation.
@@ -205,7 +206,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="landing__footer">
-        <span>Meridian — a self-service ETL tool, sized for one team&rsquo;s exports, not a data lake.</span>
+        <span>DataMigrationTool — a self-service ETL tool, sized for one team&rsquo;s exports, not a data lake.</span>
         <nav className="landing__footer-links">
           <Link href="/">Datasets</Link>
           <Link href="/process">Process data</Link>

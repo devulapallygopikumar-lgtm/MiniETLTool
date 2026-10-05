@@ -226,7 +226,7 @@ export default function LoanDetailsPage() {
                 {ledger.truncated && (
                   <Alert variant="warning">Showing only the first {ledger.rows.length.toLocaleString()} entries.</Alert>
                 )}
-                <DataGrid rows={ledger.rows} title={`${showing.fileNo}-ledger`} showAll wrap maxHeight="120vh" />
+                <DataGrid rows={ledger.rows} title={`${showing.fileNo}-ledger`} showAll wrap />
               </>
             ) : (
               <p className="text-sm text-foreground-muted">
