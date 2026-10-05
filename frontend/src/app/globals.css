@@ -18,8 +18,10 @@
   --warning-soft: #fdf3e0;
 }
 
+/* Colour scheme: follows the OS unless the user picked Light or Dark
+   (data-mode on <html>, set from the account menu -- see lib/theme.ts). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-mode="light"]) {
     --background: #121214;
     --surface: #1b1b1f;
     --surface-soft: #232328;
@@ -37,6 +39,48 @@
     --warning-soft: #332705;
   }
 }
+
+:root[data-mode="dark"] {
+  --background: #121214;
+  --surface: #1b1b1f;
+  --surface-soft: #232328;
+  --border: #302f36;
+  --foreground: #f1f1ef;
+  --foreground-muted: #a5a5ad;
+  --primary: #e2622c;
+  --primary-dark: #c2410c;
+  --primary-soft: #3a2013;
+  --success: #34d399;
+  --success-soft: #113124;
+  --danger: #f87171;
+  --danger-soft: #351515;
+  --warning: #facc15;
+  --warning-soft: #332705;
+}
+
+
+/* Brightness slider (data-level + --lvl 0..100 on <html>): the background
+   and surfaces blend from the light palette to the dark one. Text colours
+   come from data-mode, which the slider flips to dark at level 60+. */
+:root[data-level] {
+  --background: color-mix(in srgb, #121214 calc(var(--lvl) * 1%), #f7f7f5);
+  --surface: color-mix(in srgb, #1b1b1f calc(var(--lvl) * 1%), #ffffff);
+  --surface-soft: color-mix(in srgb, #232328 calc(var(--lvl) * 1%), #f1f1ee);
+  --border: color-mix(in srgb, #302f36 calc(var(--lvl) * 1%), #e2e2de);
+  --primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
+}
+/* Accent colours (data-accent on <html>; orange is the default and sets
+   nothing). Only --primary is chosen; the hover shade and the soft tint are
+   derived from it, so each accent works in light and dark. */
+:root[data-accent] {
+  --primary-dark: color-mix(in srgb, var(--primary) 78%, #000);
+  --primary-soft: color-mix(in srgb, var(--primary) 14%, var(--surface));
+}
+:root[data-accent="blue"] { --primary: #2563eb; }
+:root[data-accent="teal"] { --primary: #0d9488; }
+:root[data-accent="purple"] { --primary: #7c3aed; }
+:root[data-accent="rose"] { --primary: #e11d48; }
+:root[data-accent="slate"] { --primary: #64748b; }
 
 @theme inline {
   --color-background: var(--background);
@@ -66,7 +110,9 @@ body {
 /* Printing a single section: add body.print-master, then mark the section
    with .print-area. Colours are forced light so dark mode doesn't print black. */
 @media print {
-  :root {
+  :root,
+  :root[data-mode="dark"],
+  :root[data-level] {
     --background: #ffffff;
     --surface: #ffffff;
     --surface-soft: #f4f4f4;

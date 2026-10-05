@@ -1,5 +1,6 @@
 "use client";
 
+import { ThemeMenu } from "@/app/components/ThemeMenu";
 import { Logo } from "@/app/components/Logo";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,6 +25,7 @@ interface NavItem {
 // "New Entity" the old "Process Data"; "Target Connection" the old
 // "Target Dataset".
 const ITEMS: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", show: () => true },
   { href: "/users", label: "Users", show: (can) => can("user:manage") },
   { href: "/clients", label: "Clients", show: () => true },
   { href: "/", label: "Uploads / Datasets", show: () => true },
@@ -82,6 +84,9 @@ function UserMenu({ collapsed }: { collapsed: boolean }) {
             <p className="mt-2 text-xs text-foreground-muted">Domain: {user.domain_name}</p>
           )}
           <div className="mt-3 border-t border-border pt-3">
+            <ThemeMenu />
+          </div>
+          <div className="mt-3 border-t border-border pt-3">
             <Button
               variant="white"
               size="sm"
@@ -133,7 +138,7 @@ export function Nav() {
     >
       <div className={`flex items-center py-3 ${collapsed ? "justify-center px-2" : "justify-between px-4"}`}>
         {!collapsed && (
-          <Link href="/" className="flex items-center gap-2 font-semibold">
+          <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
             <Logo size={28} />
             DataMigrationTool
           </Link>

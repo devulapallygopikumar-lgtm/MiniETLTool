@@ -16,7 +16,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading) return;
     if (!user && !isPublic) router.replace("/login");
-    else if (user && pathname === "/login") router.replace("/");
+    else if (user && pathname === "/login") router.replace("/dashboard");
   }, [loading, user, isPublic, pathname, router]);
 
   // Render nothing protected until the session is confirmed.
