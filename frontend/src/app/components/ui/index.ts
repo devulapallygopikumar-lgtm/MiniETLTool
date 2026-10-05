@@ -6,5 +6,6 @@ export { Alert } from "./Alert";
 export { SectionTitle } from "./SectionTitle";
 export { FormField } from "./FormField";
 export { Breadcrumb, type Crumb } from "./Breadcrumb";
+export { SearchableSelect, type SearchableOption } from "./SearchableSelect";
 export { SegmentedToggle, type SegmentOption } from "./SegmentedToggle";
 export * from "./icons";

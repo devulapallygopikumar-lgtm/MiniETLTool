@@ -48,6 +48,7 @@ def discover_and_create_datasets(
     format: str,
     created_by: str | None = None,
     client_id: str | None = None,
+    excel_options: dict | None = None,
 ) -> list[models.Dataset]:
     # A generic .xml upload gets the curated Tally reader instead of the
     # tag-frequency heuristic when it's actually a Tally export — same
@@ -58,7 +59,7 @@ def discover_and_create_datasets(
     elif format == "xml" and looks_like_tally_masters(path):
         format = "xml-tally-masters"
 
-    entities = discover_entities(path, format)
+    entities = discover_entities(path, format, excel_options)
     if not entities:
         raise ValueError(
             "No entities could be discovered in this file "

@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -329,7 +330,7 @@ export default function ProcessPage() {
               </FormField>
 
               <FormField label="Operation" required>
-                <select
+                <Select
                   value={op}
                   onChange={(e) => setOp(e.target.value as DerivedOp)}
                   className={inputClass}
@@ -340,11 +341,11 @@ export default function ProcessPage() {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </FormField>
 
               <FormField label="Source dataset" required>
-                <select
+                <Select
                   value={sourceId}
                   onChange={(e) => setSourceId(e.target.value)}
                   className={inputClass}
@@ -355,7 +356,7 @@ export default function ProcessPage() {
                       {d.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </FormField>
             </div>
 
@@ -366,18 +367,18 @@ export default function ProcessPage() {
                 {op === "sort" && (
                   <div className="flex flex-wrap gap-3">
                     <FormField label="Column" required>
-                      <select value={sortColumn} onChange={(e) => setSortColumn(e.target.value)} className={inputClass}>
+                      <Select value={sortColumn} onChange={(e) => setSortColumn(e.target.value)} className={inputClass}>
                         <option value="">Select a column</option>
                         {sourceColumns.map((c) => (
                           <option key={c.name} value={c.name}>{c.name}</option>
                         ))}
-                      </select>
+                      </Select>
                     </FormField>
                     <FormField label="Order">
-                      <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className={inputClass}>
+                      <Select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} className={inputClass}>
                         <option value="asc">Ascending</option>
                         <option value="desc">Descending</option>
-                      </select>
+                      </Select>
                     </FormField>
                   </div>
                 )}
@@ -410,7 +411,7 @@ export default function ProcessPage() {
                       {aggregates.map((agg, i) => (
                         <div key={i} className="flex flex-wrap items-end gap-2">
                           <FormField label="Function">
-                            <select
+                            <Select
                               value={agg.function}
                               onChange={(e) => updateAggregate(i, { function: e.target.value })}
                               className={inputClass}
@@ -418,10 +419,10 @@ export default function ProcessPage() {
                               {AGG_FUNCS.map((f) => (
                                 <option key={f} value={f}>{f}</option>
                               ))}
-                            </select>
+                            </Select>
                           </FormField>
                           <FormField label={agg.function === "count" ? "Column (optional = all rows)" : "Column"}>
-                            <select
+                            <Select
                               value={agg.column}
                               onChange={(e) => updateAggregate(i, { column: e.target.value })}
                               className={inputClass}
@@ -430,7 +431,7 @@ export default function ProcessPage() {
                               {sourceColumns.map((c) => (
                                 <option key={c.name} value={c.name}>{c.name}</option>
                               ))}
-                            </select>
+                            </Select>
                           </FormField>
                           <FormField label="Output name">
                             <input
@@ -462,20 +463,20 @@ export default function ProcessPage() {
                 {op === "window" && (
                   <div className="flex flex-wrap gap-3">
                     <FormField label="Function" required>
-                      <select value={windowFunc} onChange={(e) => setWindowFunc(e.target.value)} className={inputClass}>
+                      <Select value={windowFunc} onChange={(e) => setWindowFunc(e.target.value)} className={inputClass}>
                         {WINDOW_FUNCS.map((f) => (
                           <option key={f} value={f}>{f}</option>
                         ))}
-                      </select>
+                      </Select>
                     </FormField>
                     {windowFunc !== "row_number" && windowFunc !== "rank" && windowFunc !== "dense_rank" && (
                       <FormField label="Column" required>
-                        <select value={windowColumn} onChange={(e) => setWindowColumn(e.target.value)} className={inputClass}>
+                        <Select value={windowColumn} onChange={(e) => setWindowColumn(e.target.value)} className={inputClass}>
                           <option value="">Select a column</option>
                           {sourceColumns.map((c) => (
                             <option key={c.name} value={c.name}>{c.name}</option>
                           ))}
-                        </select>
+                        </Select>
                       </FormField>
                     )}
                     <FormField label="Partition by (comma-separated, optional)">
@@ -488,12 +489,12 @@ export default function ProcessPage() {
                       />
                     </FormField>
                     <FormField label="Order by (optional)">
-                      <select value={windowOrderBy} onChange={(e) => setWindowOrderBy(e.target.value)} className={inputClass}>
+                      <Select value={windowOrderBy} onChange={(e) => setWindowOrderBy(e.target.value)} className={inputClass}>
                         <option value="">(none)</option>
                         {sourceColumns.map((c) => (
                           <option key={c.name} value={c.name}>{c.name}</option>
                         ))}
-                      </select>
+                      </Select>
                     </FormField>
                     <FormField label="Output name">
                       <input
@@ -519,27 +520,27 @@ export default function ProcessPage() {
                       />
                     </FormField>
                     <FormField label="Pivot column (becomes new columns)" required>
-                      <select value={pivotColumn} onChange={(e) => setPivotColumn(e.target.value)} className={inputClass}>
+                      <Select value={pivotColumn} onChange={(e) => setPivotColumn(e.target.value)} className={inputClass}>
                         <option value="">Select a column</option>
                         {sourceColumns.map((c) => (
                           <option key={c.name} value={c.name}>{c.name}</option>
                         ))}
-                      </select>
+                      </Select>
                     </FormField>
                     <FormField label="Value column" required>
-                      <select value={pivotValueColumn} onChange={(e) => setPivotValueColumn(e.target.value)} className={inputClass}>
+                      <Select value={pivotValueColumn} onChange={(e) => setPivotValueColumn(e.target.value)} className={inputClass}>
                         <option value="">Select a column</option>
                         {sourceColumns.map((c) => (
                           <option key={c.name} value={c.name}>{c.name}</option>
                         ))}
-                      </select>
+                      </Select>
                     </FormField>
                     <FormField label="Aggregate">
-                      <select value={pivotAggregate} onChange={(e) => setPivotAggregate(e.target.value)} className={inputClass}>
+                      <Select value={pivotAggregate} onChange={(e) => setPivotAggregate(e.target.value)} className={inputClass}>
                         {AGG_FUNCS.map((f) => (
                           <option key={f} value={f}>{f}</option>
                         ))}
-                      </select>
+                      </Select>
                     </FormField>
                   </div>
                 )}
@@ -603,7 +604,7 @@ export default function ProcessPage() {
                           className="flex flex-wrap items-end gap-2 rounded-md border border-border bg-surface p-2"
                         >
                           <FormField label={`Join with dataset ${i + 1}`} required>
-                            <select
+                            <Select
                               value={j.rightId}
                               onChange={(e) => updateJoin(i, { rightId: e.target.value, rightKey: "" })}
                               className={inputClass}
@@ -612,10 +613,10 @@ export default function ProcessPage() {
                               {finalDatasets.filter((d) => d.id !== sourceId).map((d) => (
                                 <option key={d.id} value={d.id}>{d.name}</option>
                               ))}
-                            </select>
+                            </Select>
                           </FormField>
                           <FormField label="Join type">
-                            <select
+                            <Select
                               value={j.joinType}
                               onChange={(e) => updateJoin(i, { joinType: e.target.value })}
                               className={inputClass}
@@ -624,10 +625,10 @@ export default function ProcessPage() {
                               <option value="left">Left</option>
                               <option value="right">Right</option>
                               <option value="full">Full</option>
-                            </select>
+                            </Select>
                           </FormField>
                           <FormField label="Left key (this dataset)" required>
-                            <select
+                            <Select
                               value={j.leftKey}
                               onChange={(e) => updateJoin(i, { leftKey: e.target.value })}
                               className={inputClass}
@@ -636,10 +637,10 @@ export default function ProcessPage() {
                               {sourceColumns.map((c) => (
                                 <option key={c.name} value={c.name}>{c.name}</option>
                               ))}
-                            </select>
+                            </Select>
                           </FormField>
                           <FormField label="Right key" required>
-                            <select
+                            <Select
                               value={j.rightKey}
                               onChange={(e) => updateJoin(i, { rightKey: e.target.value })}
                               className={inputClass}
@@ -649,7 +650,7 @@ export default function ProcessPage() {
                               {jRightColumns.map((c) => (
                                 <option key={c.name} value={c.name}>{c.name}</option>
                               ))}
-                            </select>
+                            </Select>
                           </FormField>
                           <FormField label="Right column prefix">
                             <input

@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import { useEffect, useState } from "react";
 import {
   ApiError,
@@ -191,7 +192,7 @@ export default function TargetDatasetPage() {
                 />
               </FormField>
               <FormField label="Kind" required>
-                <select
+                <Select
                   value={draft.kind}
                   onChange={(e) => onKindChange(e.target.value as ConnectionKind)}
                   className={inputClass}
@@ -201,7 +202,7 @@ export default function TargetDatasetPage() {
                       {k.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </FormField>
               <FormField label="Host" required>
                 <input

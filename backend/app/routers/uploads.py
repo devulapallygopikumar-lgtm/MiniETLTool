@@ -16,6 +16,10 @@ router = APIRouter(prefix="/api/v1/uploads", tags=["uploads"])
 async def upload_file(
     file: UploadFile = File(...),
     client_id: str = Form(...),
+    # Excel-only; ignored for CSV/XML uploads.
+    excel_has_header: bool = Form(True),
+    excel_start_row: int | None = Form(None, ge=1, le=10000),  # None = auto-detect
+    excel_trim: bool = Form(True),
     current_user: models.User = Depends(require_permission("batch:upload")),
     db: Session = Depends(get_db),
 ):
@@ -36,7 +40,14 @@ async def upload_file(
     path = save_upload(filename, content)
 
     try:
-        datasets = discover_and_create_datasets(db, path, filename, format, current_user.id, client.id)
+        excel_options = (
+            {"has_header": excel_has_header, "start_row": excel_start_row, "trim": excel_trim}
+            if format == "excel"
+            else None
+        )
+        datasets = discover_and_create_datasets(
+            db, path, filename, format, current_user.id, client.id, excel_options
+        )
     except Exception as exc:  # noqa: BLE001 - surfaced to the user as a readable upload error
         raise HTTPException(422, f"Could not read this file: {exc}") from exc
 

@@ -28,13 +28,13 @@ def detect_format(filename: str) -> str | None:
     return _EXT_FORMATS.get(ext)
 
 
-def discover_entities(path: Path, format: str) -> list[DiscoveredEntity]:
+def discover_entities(path: Path, format: str, excel_options: dict[str, Any] | None = None) -> list[DiscoveredEntity]:
     from . import csv_reader, excel_reader, xml_reader, xml_tally_masters_reader, xml_tally_reader
 
     if format == "csv":
         return csv_reader.discover(path)
     if format == "excel":
-        return excel_reader.discover(path)
+        return excel_reader.discover(path, excel_options)
     if format == "xml":
         return xml_reader.discover(path)
     if format == "xml-tally":

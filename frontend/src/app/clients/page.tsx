@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import { useEffect, useState, type FormEvent } from "react";
 import {
   ApiError,
@@ -141,12 +142,12 @@ export default function ClientsPage() {
             <form onSubmit={handleAddClient} className="flex flex-wrap items-end gap-3">
               {isAdmin && (
                 <FormField label="Domain" required>
-                  <select required value={clientDomainId} onChange={(e) => setClientDomainId(e.target.value)} className={inputClass}>
+                  <Select required value={clientDomainId} onChange={(e) => setClientDomainId(e.target.value)} className={inputClass}>
                     <option value="">Select…</option>
                     {domains.map((d) => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
               )}
               <FormField label="Client name" required>

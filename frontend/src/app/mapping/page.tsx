@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,7 +14,7 @@ import {
   saveTargetMapping,
 } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
-import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, SortTh, Pagination, usePagination } from "@/app/components/ui";
+import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader, SearchableSelect, SortTh, Pagination, usePagination } from "@/app/components/ui";
 import type { Connection, Dataset, TargetColumn, TargetMapping, TargetTable } from "@/app/lib/types";
 
 const selectClass = "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
@@ -196,14 +197,14 @@ export default function MappingPage() {
         <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <label className="flex flex-col gap-1 text-xs font-medium text-foreground-muted">
             Target connection
-            <select value={connectionId} onChange={(e) => setConnectionId(e.target.value)} className={selectClass}>
+            <Select value={connectionId} onChange={(e) => setConnectionId(e.target.value)} className={selectClass}>
               <option value="">Select…</option>
               {connections.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name} ({c.kind}){c.last_test_ok === false ? " — last test failed" : ""}
                 </option>
               ))}
-            </select>
+            </Select>
             {connections.length === 0 && (
               <span className="font-normal">
                 No connections yet.{" "}
@@ -212,34 +213,31 @@ export default function MappingPage() {
             )}
           </label>
 
-          <label className="flex flex-col gap-1 text-xs font-medium text-foreground-muted">
+          <div className="flex flex-col gap-1 text-xs font-medium text-foreground-muted">
             Target table
-            <select
+            <SearchableSelect
               value={tableKey}
-              onChange={(e) => setTableKey(e.target.value)}
+              onChange={setTableKey}
               disabled={!tables || loadingTables}
-              className={selectClass}
-            >
-              <option value="">{loadingTables ? "Loading tables…" : "Select…"}</option>
-              {(tables ?? []).map((t) => (
-                <option key={`${t.schema_name}.${t.name}`} value={`${t.schema_name}.${t.name}`}>
-                  {t.schema_name}.{t.name}
-                </option>
-              ))}
-            </select>
+              placeholder={loadingTables ? "Loading tables…" : "Select…"}
+              options={(tables ?? []).map((t) => {
+                const key = `${t.schema_name}.${t.name}`;
+                return { value: key, label: key };
+              })}
+            />
             {tables && tables.length === 0 && <span className="font-normal">No tables visible to this login.</span>}
-          </label>
+          </div>
 
           <label className="flex flex-col gap-1 text-xs font-medium text-foreground-muted">
             New Entity
-            <select value={datasetId} onChange={(e) => setDatasetId(e.target.value)} className={selectClass}>
+            <Select value={datasetId} onChange={(e) => setDatasetId(e.target.value)} className={selectClass}>
               <option value="">Select…</option>
               {entities.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
                 </option>
               ))}
-            </select>
+            </Select>
             <span className="flex items-center gap-1.5 font-normal">
               <input
                 type="checkbox"
@@ -320,7 +318,7 @@ export default function MappingPage() {
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
-                          <select
+                          <Select
                             value={src}
                             disabled={!canManage}
                             onChange={(e) => setMap((m) => ({ ...m, [c.name]: e.target.value }))}
@@ -332,7 +330,7 @@ export default function MappingPage() {
                                 {f.name} ({f.type}){usedSources.has(f.name) && f.name !== src ? " · used" : ""}
                               </option>
                             ))}
-                          </select>
+                          </Select>
                           {srcType && <span className="text-xs text-foreground-muted">{srcType}</span>}
                         </div>
                       </td>

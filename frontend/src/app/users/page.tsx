@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import { useEffect, useState, type FormEvent } from "react";
 import { ApiError, createUser, deleteUser, listDomains, listUsers, updateUser } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
@@ -123,19 +124,19 @@ export default function UsersPage() {
               />
             </FormField>
             <FormField label="Role">
-              <select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass}>
+              <Select value={role} onChange={(e) => setRole(e.target.value as Role)} className={inputClass}>
                 {ROLES.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
-              </select>
+              </Select>
             </FormField>
             <FormField label="Domain">
-              <select value={domainId} onChange={(e) => setDomainId(e.target.value)} className={inputClass}>
+              <Select value={domainId} onChange={(e) => setDomainId(e.target.value)} className={inputClass}>
                 <option value="">— none —</option>
                 {domains.map((d) => (
                   <option key={d.id} value={d.id}>{d.name}</option>
                 ))}
-              </select>
+              </Select>
             </FormField>
             <Button type="submit" disabled={creating}>
               {creating ? "Adding…" : "Add user"}
@@ -161,7 +162,7 @@ export default function UsersPage() {
               <tr key={u.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3 font-medium text-foreground">{u.email}</td>
                 <td className="px-4 py-3">
-                  <select
+                  <Select
                     value={u.role}
                     onChange={(e) => handleRoleChange(u, e.target.value as Role)}
                     disabled={u.id === currentUser?.id}
@@ -171,10 +172,10 @@ export default function UsersPage() {
                     {ROLES.map((r) => (
                       <option key={r} value={r}>{r}</option>
                     ))}
-                  </select>
+                  </Select>
                 </td>
                 <td className="px-4 py-3">
-                  <select
+                  <Select
                     value={u.domain_id ?? ""}
                     onChange={(e) => handleDomainChange(u, e.target.value)}
                     className={inputClass}
@@ -183,7 +184,7 @@ export default function UsersPage() {
                     {domains.map((d) => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
-                  </select>
+                  </Select>
                 </td>
                 <td className="px-4 py-3">
                   <Button variant="white" size="sm" onClick={() => handleActiveToggle(u)}>

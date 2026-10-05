@@ -1,12 +1,13 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ApiError, listClients, listDomains, uploadFile } from "@/app/lib/api";
 import { Alert, Button, Card, CardBody, CardHeader, IconUpload } from "@/app/components/ui";
 import type { Client, Dataset, Domain } from "@/app/lib/types";
 
-const ACCEPTED = ".csv,.tsv,.xlsx,.xls,.xml";
+const ACCEPTED = ".csv,.tsv,.xlsx,.xlsm,.xls,.xml";
 
 /** Pick a client, drop a file, discover datasets. `onUploaded` lets the page
  *  beside it refresh its grid. Callers only render this for users who can
@@ -27,6 +28,10 @@ export function UploadPanel({
   const [clients, setClients] = useState<Client[] | null>(null);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [clientId, setClientId] = useState("");
+  const [hasHeader, setHasHeader] = useState(true);
+  const [startRow, setStartRow] = useState(""); // blank = auto-detect
+  const [trim, setTrim] = useState(true);
+  const isExcel = !!file && /\.(xlsx|xlsm|xls)$/i.test(file.name);
 
   useEffect(() => {
     listClients().then(setClients).catch(() => setClients([]));
@@ -45,7 +50,11 @@ export function UploadPanel({
     setStatus("uploading");
     setError(null);
     try {
-      const result = await uploadFile(file, clientId);
+      const result = await uploadFile(
+        file,
+        clientId,
+        isExcel ? { hasHeader, startRow: startRow ? Math.max(1, parseInt(startRow, 10) || 1) : null, trim } : undefined
+      );
       setCreated(result.datasets);
       setStatus("done");
       setFile(null);
@@ -82,7 +91,7 @@ export function UploadPanel({
 
         <label className="flex flex-col gap-1 text-sm font-medium">
           Client
-          <select
+          <Select
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
             className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm font-normal"
@@ -94,7 +103,7 @@ export function UploadPanel({
                 {c.name}
               </option>
             ))}
-          </select>
+          </Select>
           {clients !== null && clients.length === 0 && (
             <span className="text-xs font-normal text-foreground-muted">
               No clients yet.{" "}
@@ -145,6 +154,34 @@ export function UploadPanel({
             </div>
           )}
         </div>
+
+        {isExcel && (
+          <fieldset className="flex flex-col gap-2 rounded-md border border-border p-3 text-sm">
+            <legend className="px-1 text-xs font-medium text-foreground-muted">Excel options</legend>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
+              First row contains column names
+            </label>
+            <label className="flex items-center gap-2">
+              <span>{hasHeader ? "Header row number" : "Data starts at row"}</span>
+              <input
+                type="number"
+                min={1}
+                value={startRow}
+                placeholder="Auto"
+                onChange={(e) => setStartRow(e.target.value)}
+                className="w-20 rounded-md border border-border bg-surface px-2 py-1 text-sm"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} />
+              Trim spaces around cell values
+            </label>
+            <span className="text-xs text-foreground-muted">
+              Applies to every sheet. Leave the row number blank to auto-detect it (title rows above the header are skipped); blank rows are always ignored.
+            </span>
+          </fieldset>
+        )}
 
         <Button disabled={!file || !clientId || status === "uploading"} onClick={handleUpload}>
           {status === "uploading" ? "Uploading…" : "Upload and discover"}

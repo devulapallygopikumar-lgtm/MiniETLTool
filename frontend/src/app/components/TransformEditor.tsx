@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import { useEffect, useState } from "react";
 import {
   ApiError,
@@ -236,7 +237,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
           <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-soft p-3">
             <div className="flex flex-wrap gap-3">
               <FormField label="Operation">
-                <select
+                <Select
                   value={draft.op}
                   onChange={(e) => onOpChange(e.target.value as TransformOp)}
                   className={inputClass}
@@ -247,12 +248,12 @@ export function TransformEditor({ datasetId, columns }: Props) {
                       {o.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </FormField>
 
               {needsColumn === "existing" && (
                 <FormField label={draft.op === "rename" ? "Column (current name)" : "Column"}>
-                  <select
+                  <Select
                     value={draft.column ?? ""}
                     onChange={(e) => setDraft((d) => ({ ...d, column: e.target.value || null }))}
                     className={inputClass}
@@ -262,7 +263,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
                         {c.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
               )}
 
@@ -308,14 +309,14 @@ export function TransformEditor({ datasetId, columns }: Props) {
 
               {draft.op === "sort" && (
                 <FormField label="Order">
-                  <select
+                  <Select
                     value={String(draft.args.order ?? "asc")}
                     onChange={(e) => setArg("order", e.target.value)}
                     className={inputClass}
                   >
                     <option value="asc">Ascending</option>
                     <option value="desc">Descending</option>
-                  </select>
+                  </Select>
                 </FormField>
               )}
 
@@ -334,7 +335,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
               {draft.op === "lookup" && (
                 <>
                   <FormField label="From dataset">
-                    <select
+                    <Select
                       value={String(draft.args.source_dataset_id ?? "")}
                       onChange={(e) => setArg("source_dataset_id", e.target.value)}
                       className={inputClass}
@@ -345,10 +346,10 @@ export function TransformEditor({ datasetId, columns }: Props) {
                           {d.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </FormField>
                   <FormField label="Match this column">
-                    <select
+                    <Select
                       value={String(draft.args.match_column ?? "")}
                       onChange={(e) => setArg("match_column", e.target.value)}
                       className={inputClass}
@@ -359,7 +360,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
                           {c.name}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                   </FormField>
                   <FormField label="Against their column (optional, else same name)">
                     <input
@@ -407,7 +408,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
 
               {draft.op === "cast" && (
                 <FormField label="Type">
-                  <select
+                  <Select
                     value={String(draft.args.type ?? "string")}
                     onChange={(e) => setArg("type", e.target.value)}
                     className={inputClass}
@@ -416,14 +417,14 @@ export function TransformEditor({ datasetId, columns }: Props) {
                     <option value="integer">Integer</option>
                     <option value="number">Number</option>
                     <option value="date">Date</option>
-                  </select>
+                  </Select>
                 </FormField>
               )}
 
               {draft.op === "mask" && (
                 <>
                   <FormField label="Mode">
-                    <select
+                    <Select
                       value={String(draft.args.mode ?? "redact")}
                       onChange={(e) => setArg("mode", e.target.value)}
                       className={inputClass}
@@ -431,7 +432,7 @@ export function TransformEditor({ datasetId, columns }: Props) {
                       <option value="hash">Hash (deterministic)</option>
                       <option value="redact">Redact (fixed replacement)</option>
                       <option value="partial">Partial (keep last n)</option>
-                    </select>
+                    </Select>
                   </FormField>
                   {draft.args.mode === "redact" && (
                     <FormField label="Replacement">

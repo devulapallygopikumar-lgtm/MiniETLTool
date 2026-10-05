@@ -1,5 +1,6 @@
 "use client";
 
+import { Select } from "@/app/components/ui/SearchableSelect";
 import { useEffect, useState } from "react";
 import {
   ApiError,
@@ -208,7 +209,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
                 />
 
                 {rule.enforcement === "move_on" && (
-                  <select
+                  <Select
                     value={rule.on_violation}
                     onChange={(e) =>
                       changeOnViolation(rule, e.target.value as OnViolation)
@@ -217,7 +218,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
                   >
                     <option value="keep">Keep row</option>
                     <option value="reject_row">Reject row</option>
-                  </select>
+                  </Select>
                 )}
 
                 {canDelete && (
@@ -239,7 +240,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
           <div className="flex flex-col gap-3 rounded-md border border-border bg-surface-soft p-3">
             <div className="flex flex-wrap gap-3">
               <FormField label="Rule type">
-                <select
+                <Select
                   value={draft.rule}
                   onChange={(e) => onRuleTypeChange(e.target.value as RuleType)}
                   className={inputClass}
@@ -249,12 +250,12 @@ export function RuleEditor({ datasetId, columns }: Props) {
                       {r.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </FormField>
 
               {selectedMeta.scope === "column" && (
                 <FormField label="Column">
-                  <select
+                  <Select
                     value={draft.column ?? ""}
                     onChange={(e) =>
                       setDraft((d) => ({ ...d, column: e.target.value || null }))
@@ -267,7 +268,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
                         {c.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </FormField>
               )}
 
@@ -296,7 +297,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
               {draft.rule === "expression" && (
                 <>
                   <FormField label="Scope">
-                    <select
+                    <Select
                       value={draft.scope}
                       onChange={(e) =>
                         setDraft((d) => ({
@@ -308,7 +309,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
                     >
                       <option value="row">Row</option>
                       <option value="dataset">Dataset</option>
-                    </select>
+                    </Select>
                   </FormField>
                   <FormField label="Expression" className="flex-1">
                     <input
@@ -341,7 +342,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
               </div>
               {draft.enforcement === "move_on" && (
                 <FormField label="On violation">
-                  <select
+                  <Select
                     value={draft.on_violation}
                     onChange={(e) =>
                       setDraft((d) => ({
@@ -353,7 +354,7 @@ export function RuleEditor({ datasetId, columns }: Props) {
                   >
                     <option value="keep">Keep row</option>
                     <option value="reject_row">Reject row</option>
-                  </select>
+                  </Select>
                 </FormField>
               )}
             </div>

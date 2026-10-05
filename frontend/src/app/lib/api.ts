@@ -149,10 +149,26 @@ export interface UploadResult {
   datasets: Dataset[];
 }
 
-export function uploadFile(file: File, clientId: string): Promise<UploadResult> {
+/** Excel-only upload rules; the backend ignores them for CSV/XML. */
+export interface ExcelUploadOptions {
+  hasHeader: boolean; // first row holds the column names
+  startRow: number | null; // 1-based row where the header/data begins; null = auto-detect
+  trim: boolean; // strip whitespace from cells
+}
+
+export function uploadFile(
+  file: File,
+  clientId: string,
+  excel?: ExcelUploadOptions
+): Promise<UploadResult> {
   const form = new FormData();
   form.append("file", file);
   form.append("client_id", clientId);
+  if (excel) {
+    form.append("excel_has_header", String(excel.hasHeader));
+    if (excel.startRow !== null) form.append("excel_start_row", String(excel.startRow));
+    form.append("excel_trim", String(excel.trim));
+  }
   return request("/api/v1/uploads", { method: "POST", body: form });
 }
 
