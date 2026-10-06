@@ -8,9 +8,8 @@
 import { useState } from "react";
 import { DataGrid } from "@/app/components/DataGrid";
 import { SegmentedToggle } from "@/app/components/ui";
-import { getTallyReport } from "@/app/lib/api";
-import { exportTallyReportPdf } from "@/app/lib/tallyReportPdf";
-import type { LoanTallyRow, TallyReportStatus } from "@/app/lib/types";
+import { exportTallyGridPdf } from "@/app/lib/tallyReportPdf";
+import type { LoanTallyRow } from "@/app/lib/types";
 
 const COLUMNS = [
   "File No",
@@ -38,10 +37,9 @@ const toGridRow = (r: LoanTallyRow) => ({
   Status: r.status,
 });
 
-// The grid's PDF button gives the same report as the Print buttons: all loans
-// when ungrouped, otherwise the loans of that group.
-const reportPdf = (status: TallyReportStatus) => async () =>
-  exportTallyReportPdf(await getTallyReport(status), `tally-report-${status.toLowerCase().replace(/\s+/g, "-")}`);
+// The grid's PDF button: just this grid's rows, in the report's look.
+const gridPdf = (rows: LoanTallyRow[], title: string) => async () =>
+  exportTallyGridPdf(rows, title, `tally-${title.toLowerCase().replace(/\s+/g, "-")}`);
 
 type View = "none" | "status";
 
@@ -64,7 +62,7 @@ export function LoanTally({ rows }: { rows: LoanTallyRow[] }) {
       </div>
 
       {view === "none" ? (
-        <DataGrid rows={rows.map(toGridRow)} columns={COLUMNS} title="loan-tally" showAll pdfExport={reportPdf("all")} />
+        <DataGrid rows={rows.map(toGridRow)} columns={COLUMNS} title="loan-tally" showAll pdfExport={gridPdf(rows, "All loans")} />
       ) : (
         STATUS_ORDER.map((status) => {
           const group = rows.filter((r) => r.status === status);
@@ -86,7 +84,7 @@ export function LoanTally({ rows }: { rows: LoanTallyRow[] }) {
                 columns={COLUMNS}
                 title={`loan-tally-${status.toLowerCase().replace(/\s+/g, "-")}`}
                 showAll
-                pdfExport={reportPdf(status)}
+                pdfExport={gridPdf(group, `${status} loans`)}
               />
             </section>
           );
