@@ -1,6 +1,6 @@
 "use client";
 
-// Result of "Tally In GO": one row per file no -- the Principal Outstanding
+// Result of "Tally All": one row per file no -- the Principal Outstanding
 // given in the master data against the ledger running total it was matched
 // to (see backend app/routers/loan_tally.py for how the row is picked).
 // Optionally grouped by Status, one grid per group.

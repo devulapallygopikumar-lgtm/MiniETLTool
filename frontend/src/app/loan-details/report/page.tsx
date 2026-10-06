@@ -1,6 +1,6 @@
 "use client";
 
-// Printable verification report for Tally In GO: every loan of the chosen
+// Printable verification report for Tally All: every loan of the chosen
 // status (Tallied / Not Tallied / all) as its own section -- file no, name,
 // the tally figures, then that loan's ledger entries. Opened from the Tally
 // card's Print buttons; use Print on this page (or Ctrl+P).
@@ -171,7 +171,7 @@ function ReportBody() {
       )}
       {report !== null && report.loans.length === 0 && (
         <p className="text-sm text-foreground-muted">
-          Nothing to report{status === "all" ? "" : ` for ${status}`}. Run <b>Tally In GO</b> on the Loan details page
+          Nothing to report{status === "all" ? "" : ` for ${status}`}. Run <b>Tally All</b> on the Loan details page
           first.
         </p>
       )}

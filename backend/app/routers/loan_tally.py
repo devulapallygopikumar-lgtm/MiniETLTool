@@ -169,7 +169,7 @@ def tally(body: TallyRequest, db: Session = Depends(get_db)):
     return {"current": body.file_no, "rows": rows}
 
 
-# ---- Tally everything ("Tally In GO") ----
+# ---- Tally everything ("Tally All") ----
 #
 # One click tallies every loan in
 #     select name, file_no from tblmstcontact_live_loans order by file_no

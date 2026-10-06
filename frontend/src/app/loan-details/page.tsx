@@ -35,6 +35,8 @@ export default function LoanDetailsPage() {
   const [master, setMaster] = useState<LoanMaster | null>(null);
   const [ledger, setLedger] = useState<LoanLedgerMatch | null>(null);
   const [showing, setShowing] = useState<{ name: string; fileNo: string } | null>(null);
+  // Two views that swap: one loan (Show) or the whole-portfolio Tally grid (Tally All).
+  const [mode, setMode] = useState<"individual" | "tally">("tally");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -94,6 +96,7 @@ export default function LoanDetailsPage() {
   }
 
   async function show() {
+    setMode("individual");
     if (!name || !fileNo) return;
     setLoading(true);
     clearResult();
@@ -109,7 +112,7 @@ export default function LoanDetailsPage() {
     }
   }
 
-  // "Tally In GO": no selection needed. The backend takes every loan in
+  // "Tally All": no selection needed. The backend takes every loan in
   // `select name, file_no from tblmstcontact_live_loans order by file_no`,
   // does what Show does for each, compares Principal Outstanding with the
   // ledger running totals, and keeps one row per file no. It runs as a
@@ -141,6 +144,7 @@ export default function LoanDetailsPage() {
   }, [watchTally]);
 
   async function tallyItGo() {
+    setMode("tally");
     setError(null);
     try {
       await startTallyAll();
@@ -192,7 +196,7 @@ export default function LoanDetailsPage() {
               {loading ? "Loading…" : "Show"}
             </Button>
             <Button onClick={tallyItGo} disabled={tallying}>
-              {tallying ? `Tallying ${progress?.done ?? 0} of ${progress?.total || "…"}` : "Tally In GO"}
+              {tallying ? `Tallying ${progress?.done ?? 0} of ${progress?.total || "…"}` : "Tally All"}
             </Button>
             <Button
               variant="white"
@@ -209,7 +213,7 @@ export default function LoanDetailsPage() {
         </CardBody>
       </Card>
 
-      {tallyRows !== null && tallyRows.length > 0 && (
+      {mode === "tally" && tallyRows !== null && tallyRows.length > 0 && (
         <Card>
           <CardHeader
             title={`Tally — ${tallyRows.length} loan${tallyRows.length === 1 ? "" : "s"}: ${
@@ -241,7 +245,7 @@ export default function LoanDetailsPage() {
           <CardBody className="flex flex-col gap-2">
             <p className="text-xs text-foreground-muted">
               Principal Outstanding (master data) against the ledger running total it was matched to. Difference =
-              Principal Outstanding − Running Total; 0 means Tallied. Rebuilt on every Tally In GO and saved in <code>tmp_loan_tally</code>, one row
+              Principal Outstanding − Running Total; 0 means Tallied. Rebuilt on every Tally All and saved in <code>tmp_loan_tally</code>, one row
               per file no.
             </p>
             <LoanTally rows={tallyRows} />
@@ -249,7 +253,7 @@ export default function LoanDetailsPage() {
         </Card>
       )}
 
-      {master && showing && (
+      {mode === "individual" && master && showing && (
         <div className="print-area">
           <Card>
             <CardHeader
@@ -288,7 +292,7 @@ export default function LoanDetailsPage() {
         </div>
       )}
 
-      {ledger && showing && (
+      {mode === "individual" && ledger && showing && (
         <Card>
           <CardHeader title="Ledger entries" />
           <CardBody className="flex flex-col gap-3">
