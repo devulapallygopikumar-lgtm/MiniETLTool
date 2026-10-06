@@ -78,6 +78,7 @@ export function DataGrid({
   showAll = false,
   wrap = false,
   maxHeight = "60vh",
+  pdfExport,
 }: {
   rows: Row[];
   columns?: string[];
@@ -89,6 +90,8 @@ export function DataGrid({
   wrap?: boolean;
   /** Height of the scrolling grid area (any CSS length). */
   maxHeight?: string;
+  /** Replaces the default PDF export (a plain table dump) with a custom one. */
+  pdfExport?: () => Promise<void>;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
@@ -120,6 +123,7 @@ export function DataGrid({
     setExporting(kind);
     try {
       if (kind === "excel") await exportExcel(rows, cols, filename);
+      else if (pdfExport) await pdfExport();
       else await exportPdf(rows, cols, filename);
     } finally {
       setExporting(null);

@@ -9,6 +9,10 @@ import type {
   LoanContact,
   LoanLedgerMatch,
   LoanMaster,
+  LoanTallyResult,
+  TallyStatus,
+  LoanTallyReport,
+  TallyReportStatus,
   NewTargetMapping,
   TargetColumn,
   TargetMapping,
@@ -451,4 +455,29 @@ export function getLoanMaster(name: string, fileNo: string): Promise<LoanMaster>
 export function getLoanLedger(name: string, fileNo: string): Promise<LoanLedgerMatch> {
   const q = new URLSearchParams({ name, file_no: fileNo });
   return request(`/api/v1/loan-details/ledger?${q}`);
+}
+
+// ---- Loan tally ----
+
+export function listLoanTallies(): Promise<LoanTallyResult> {
+  return request("/api/v1/loan-tally");
+}
+
+export function tallyLoan(name: string, fileNo: string): Promise<LoanTallyResult> {
+  return request("/api/v1/loan-tally", {
+    method: "POST",
+    body: JSON.stringify({ name, file_no: fileNo }),
+  });
+}
+
+export function startTallyAll(): Promise<TallyStatus> {
+  return request("/api/v1/loan-tally/run-all", { method: "POST" });
+}
+
+export function getTallyStatus(): Promise<TallyStatus> {
+  return request("/api/v1/loan-tally/status");
+}
+
+export function getTallyReport(status: TallyReportStatus): Promise<LoanTallyReport> {
+  return request(`/api/v1/loan-tally/report?${new URLSearchParams({ status })}`);
 }

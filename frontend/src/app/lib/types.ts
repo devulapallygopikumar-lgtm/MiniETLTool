@@ -352,3 +352,43 @@ export interface LoanLedgerMatch {
   truncated: boolean;
   rows: Record<string, unknown>[];
 }
+
+// ---- Loan tally ----
+
+export interface LoanTallyRow {
+  file_no: string;
+  name: string;
+  principal_outstanding: number | null;
+  ledger_date: string | null;
+  running_total: number | null;
+  difference: number | null;
+  status: "Tallied" | "Not Tallied";
+  tallied_at: string;
+}
+
+export interface LoanTallyResult {
+  current?: string; // the file no just tallied
+  rows: LoanTallyRow[]; // every stored tally, newest first
+}
+
+export interface TallyStatus {
+  running: boolean;
+  total: number;
+  done: number;
+  failed: number;
+  current: string | null; // file no being tallied
+  started_at: string | null;
+  finished_at: string | null;
+}
+
+export type TallyReportStatus = "all" | "Tallied" | "Not Tallied";
+
+export interface LoanTallyReportLoan extends LoanTallyRow {
+  ledgers: { name: string; rows: number }[];
+  entries: Record<string, unknown>[]; // the loan's ledger entries, as in the Loan details grid
+}
+
+export interface LoanTallyReport {
+  status: TallyReportStatus;
+  loans: LoanTallyReportLoan[];
+}

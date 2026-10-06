@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ApiError, getLoanLedger, getLoanMaster, listLoanContacts } from "@/app/lib/api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ApiError, getLoanLedger, getLoanMaster, getTallyStatus, listLoanContacts, listLoanTallies, startTallyAll } from "@/app/lib/api";
 import { Alert, Breadcrumb, Button, Card, CardBody, CardHeader } from "@/app/components/ui";
 import { Select } from "@/app/components/ui/SearchableSelect";
 import { DataGrid } from "@/app/components/DataGrid";
-import type { LoanContact, LoanLedgerMatch, LoanMaster } from "@/app/lib/types";
+import { LoanTally } from "@/app/components/LoanTally";
+import type { LoanContact, LoanLedgerMatch, LoanMaster, LoanTallyRow, TallyStatus } from "@/app/lib/types";
 
 const selectClass = "w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm";
 
@@ -108,6 +109,47 @@ export default function LoanDetailsPage() {
     }
   }
 
+  // "Tally In GO": no selection needed. The backend takes every loan in
+  // `select name, file_no from tblmstcontact_live_loans order by file_no`,
+  // does what Show does for each, compares Principal Outstanding with the
+  // ledger running totals, and keeps one row per file no. It runs as a
+  // background job, so this polls its progress.
+  const [tallyRows, setTallyRows] = useState<LoanTallyRow[] | null>(null);
+  const [progress, setProgress] = useState<TallyStatus | null>(null);
+  const tallying = progress?.running ?? false;
+
+  const watchTally = useCallback(async () => {
+    for (;;) {
+      const s = await getTallyStatus();
+      setProgress(s);
+      setTallyRows((await listLoanTallies()).rows);
+      if (!s.running) return;
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }, []);
+
+  useEffect(() => {
+    // Show what's stored, and pick up a run that's still going (e.g. after a reload).
+    listLoanTallies()
+      .then((r) => setTallyRows(r.rows))
+      .catch(() => setTallyRows([]));
+    getTallyStatus()
+      .then((s) => {
+        if (s.running) watchTally().catch(() => {});
+      })
+      .catch(() => {});
+  }, [watchTally]);
+
+  async function tallyItGo() {
+    setError(null);
+    try {
+      await startTallyAll();
+      await watchTally();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Failed to tally.");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -149,6 +191,9 @@ export default function LoanDetailsPage() {
             <Button onClick={show} disabled={!name || !fileNo || loading}>
               {loading ? "Loading…" : "Show"}
             </Button>
+            <Button onClick={tallyItGo} disabled={tallying}>
+              {tallying ? `Tallying ${progress?.done ?? 0} of ${progress?.total || "…"}` : "Tally In GO"}
+            </Button>
             <Button
               variant="white"
               disabled={!name && !fileNo}
@@ -163,6 +208,46 @@ export default function LoanDetailsPage() {
           </div>
         </CardBody>
       </Card>
+
+      {tallyRows !== null && tallyRows.length > 0 && (
+        <Card>
+          <CardHeader
+            title={`Tally — ${tallyRows.length} loan${tallyRows.length === 1 ? "" : "s"}: ${
+              tallyRows.filter((r) => r.status === "Tallied").length
+            } Tallied, ${tallyRows.filter((r) => r.status !== "Tallied").length} Not Tallied`}
+            actions={
+              <span className="ml-auto flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="text-foreground-muted">Print report:</span>
+                {(
+                  [
+                    ["Not Tallied", "Not Tallied"],
+                    ["Tallied", "Tallied"],
+                    ["all", "Both"],
+                  ] as const
+                ).map(([status, label]) => (
+                  <Button
+                    key={status}
+                    variant="white"
+                    size="sm"
+                    title="Opens the ledgers of these loans, file no by file no, ready to print"
+                    onClick={() => window.open(`/loan-details/report?status=${encodeURIComponent(status)}`, "_blank")}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </span>
+            }
+          />
+          <CardBody className="flex flex-col gap-2">
+            <p className="text-xs text-foreground-muted">
+              Principal Outstanding (master data) against the ledger running total it was matched to. Difference =
+              Principal Outstanding − Running Total; 0 means Tallied. Rebuilt on every Tally In GO and saved in <code>tmp_loan_tally</code>, one row
+              per file no.
+            </p>
+            <LoanTally rows={tallyRows} />
+          </CardBody>
+        </Card>
+      )}
 
       {master && showing && (
         <div className="print-area">
